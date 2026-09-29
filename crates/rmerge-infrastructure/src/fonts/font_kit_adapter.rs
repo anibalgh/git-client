@@ -87,7 +87,7 @@ impl FontDiscoveryPort for FontKitAdapter {
                 mono_families.push(family);
             } else if let Ok(handle) = source.select_family_by_name(&family) {
                 let is_mono = handle.fonts().iter().any(|f| {
-                    f.load().map_or(false, |loaded| loaded.is_monospace())
+                    f.load().is_ok_and(|loaded| loaded.is_monospace())
                 });
                 if is_mono {
                     mono_families.push(family);

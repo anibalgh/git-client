@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -217,8 +218,8 @@ mod tests {
         let dst_dir = std::env::temp_dir().join(format!("rmerge_test_ssh_clone_{}", uuid_v4()));
         let storage = Git2StorageAdapter::new();
         let res = storage.clone_repository("git@github.com:anibalgh/git-client.git", &dst_dir).await;
-        println!("SSH Clone Result: {:?}", res);
-        assert!(res.is_ok(), "Clone failed: {:?}", res);
+        println!("SSH Clone Result: {res:?}");
+        assert!(res.is_ok(), "Clone failed: {res:?}");
         assert!(dst_dir.join(".git").exists());
         let _ = fs::remove_dir_all(&dst_dir);
     }

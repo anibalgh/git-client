@@ -26,7 +26,7 @@ Este archivo contiene el contexto integral, las directrices arquitectónicas y l
 
 El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) dividido estrictamente en **5 capas/crates**. La **Regla de Dependencias** es inviolable: las dependencias del código fuente **SOLO apuntan hacia adentro**.
 
-```
+```text
                 ┌──────────────────────────────┐
                 │          PRESENTACIÓN        │
                 │   rmerge-gui  │  rmerge-cli  │
@@ -50,9 +50,10 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
  │ • settings (json adapter)   │ │ • services (Graph, Merge...) │
  │ • ipc (socket adapter)      │ │ • errors (Cero I/O)          │
  └─────────────────────────────┘ └──────────────────────────────┘
-```
+```text
 
 ### 2.1. Crate: `rmerge-domain` (Núcleo)
+
 * **Responsabilidad:** Entidades de negocio, objetos de valor y algoritmos puros.
 * **Prohibido:**
   * NO importar `rmerge-application`, `rmerge-infrastructure`, `rmerge-gui` ni `rmerge-cli`.
@@ -64,12 +65,14 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
   * `errors.rs`: Errores de dominio tipados.
 
 ### 2.2. Crate: `rmerge-application` (Casos de Uso y Puertos)
+
 * **Responsabilidad:** Orquestar la lógica de la aplicación y definir los contratos de comunicación externa.
 * **Puertos de Entrada (`ports/in/`):** Métodos que exponen los casos de uso a la GUI y CLI (`RepositoryUseCases`, `StagingUseCases`, `CommitUseCases`, `AuthorUseCases`, `TypographyUseCases`, `MergeUseCases`).
 * **Puertos de Salida (`ports/out/`):** Traits que desacoplan los detalles técnicos externos (`GitStoragePort`, `GitConfigPort`, `SettingsStoragePort`, `FontDiscoveryPort`, `ThemeStoragePort`).
 * **Prohibido:** No utilizar dependencias concretas como `git2` o llamadas al filesystem; todo se abstrae mediante los traits de salida.
 
 ### 2.3. Crate: `rmerge-infrastructure` (Adaptadores de Salida)
+
 * **Responsabilidad:** Implementar los traits de salida de `rmerge-application` conectando con librerías externas.
 * **Adaptadores principales:**
   * `git/storage_adapter.rs` -> Implementa `GitStoragePort` con `git2`. Traduce errores externos a `DomainError`.
@@ -79,6 +82,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
   * `ipc/ipc_adapter.rs` -> Implementa la comunicación IPC cliente/servidor.
 
 ### 2.4. Crates: `rmerge-gui` y `rmerge-cli` (Adaptadores de Entrada)
+
 * **Responsabilidad:** Interacción con el usuario y despacho de casos de uso.
 * **Regla:** La interfaz de usuario nunca llama directamente a la capa de infraestructura; siempre pasa por los casos de uso de la aplicación.
 
@@ -87,6 +91,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
 ## 3. Convenciones de UI, Tipografía y Diseño
 
 ### 3.1. Tipografía Dinámica y Jerarquía de Texto
+
 * La configuración de tipografía del usuario en `self.state.typography` define dos aspectos:
   * **Tipografía de Interfaz (`ui_font`):** Familia proporcional (`FontFamily::Proportional`) y tamaño base (`ui_size`).
   * **Tipografía de Código (`code_font`):** Familia monoespaciada (`FontFamily::Monospace`), tamaño (`code_size`) y ligaduras.
@@ -94,6 +99,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
 * **Visor de Diffs y Monospace:** Los hashes de commit, diffs unificados, hunks y contenido de archivos deben renderizarse exclusivamente con `code_size` y `FontFamily::Monospace`.
 
 ### 3.2. Estructura del Encabezado Superior (Top Header)
+
 * El botón para alternar el panel del grafo lateral (`📊 Grafo Rama`) está ubicado **inmediatamente a la derecha del indicador de la rama activa**.
 * Todas las acciones globales de navegación están concentradas en el **Menú Hamburguesa (`☰`)** en el extremo derecho:
   * 🏠 Inicio
@@ -104,6 +110,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
   * ℹ Acerca de
 
 ### 3.3. Área de Preparación (Staging) y Commit
+
 * La sección para escribir el mensaje de commit y el botón de confirmación (`✔ Realizar Commit`) solo deben ser visibles y activas cuando existan archivos preparados (`staged`). Si no hay archivos preparados, la sección se oculta automáticamente.
 * Botones de control:
   * `+`: Preparar archivo individual (Stage).
@@ -112,6 +119,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
   * `--`: Despreparar todos los archivos.
 
 ### 3.4. Resiliencia de Red y Chequeo de Conexión
+
 * Antes de ejecutar operaciones remotas de Git (`push`, `pull`, `fetch`), el sistema debe realizar una comprobación previa no bloqueante de alcanzabilidad del servidor remoto (verificación de socket TCP hacia host y puerto con timeout corto).
 * Si el servidor no responde (ej. red privada o VPN desconectada), se debe desplegar el modal de advertencia (`server_unreachable_modal`) en el idioma activo en lugar de congelar la interfaz.
 
@@ -137,6 +145,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
 ## 6. Skills Disponibles para el Agente
 
 En el directorio `.agents/skills/` se encuentran los skills especializados para este repositorio:
+
 * [Clean Architecture Skill](file:///.agents/skills/clean-architecture/SKILL.md): Guía de diseño, reglas de dependencia y checklist de implementación limpia.
 * [Hexagonal Architecture Skill](file:///.agents/skills/hexagonal-architecture/SKILL.md): Guía de puertos de entrada/salida, adaptadores e inyección de dependencias.
 
@@ -155,4 +164,4 @@ cargo check --workspace
 
 # 3. Compilar los binarios optimizados de producción
 cargo build --release --workspace
-```
+```text

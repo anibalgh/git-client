@@ -1,0 +1,303 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # =========================================================================
+  # 1. LINUX BUILD & PACKAGING (deb, rpm, AppImage, tar.gz)
+  # =========================================================================
+  build-linux:
+    name: Linux Packages (.deb, .rpm, .AppImage, .tar.gz)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config libfontconfig1-dev libasound2-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev rpm file
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Extract Tag Version
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build binaries (Release)
+        run: |
+          cargo build --release --workspace
+
+      - name: Strip binaries
+        run: |
+          strip target/release/rmerge
+          strip target/release/rmerge-gui
+
+      # --- Package 1: Standalone tar.gz ---
+      - name: Create Linux tar.gz
+        run: |
+          VERSION="${{ steps.vars.outputs.VERSION }}"
+          DIR="git-client-${VERSION}-linux-x86_64"
+          mkdir -p "$DIR"
+          cp target/release/rmerge "$DIR/"
+          cp target/release/rmerge-gui "$DIR/"
+          cp packaging/rmerge.desktop "$DIR/"
+          cp assets/icons/rmerge_512x512.png "$DIR/rmerge.png"
+          cp README.md LICENSE "$DIR/" 2>/dev/null || true
+          tar -czvf "git-client-${VERSION}-linux-x86_64.tar.gz" "$DIR"
+
+      # --- Package 2: Debian .deb package ---
+      - name: Build Debian .deb package
+        run: |
+          VERSION="${{ steps.vars.outputs.VERSION }}"
+          DEB_DIR="git-client_${VERSION}_amd64"
+          mkdir -p "${DEB_DIR}/DEBIAN"
+          mkdir -p "${DEB_DIR}/usr/bin"
+          mkdir -p "${DEB_DIR}/usr/share/applications"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/512x512/apps"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/128x128/apps"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/64x64/apps"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/48x48/apps"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/32x32/apps"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/16x16/apps"
+
+          cat << EOF > "${DEB_DIR}/DEBIAN/control"
+          Package: git-client
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Depends: libc6 (>= 2.31), libssl3 (>= 3.0.0) | libssl1.1, libfontconfig1
+          Maintainer: AnibalGH
+          Description: Git-Client (rmerge) Native 3-Way Merge & Git Desktop Client
+           A high-performance Git client and 3-way merge conflict resolver developed in Rust.
+          EOF
+
+          # Binaries
+          cp target/release/rmerge "${DEB_DIR}/usr/bin/"
+          cp target/release/rmerge-gui "${DEB_DIR}/usr/bin/"
+          chmod 755 "${DEB_DIR}/usr/bin/rmerge" "${DEB_DIR}/usr/bin/rmerge-gui"
+
+          # Desktop & Icons
+          cp packaging/rmerge.desktop "${DEB_DIR}/usr/share/applications/"
+          cp assets/icons/rmerge_512x512.png "${DEB_DIR}/usr/share/icons/hicolor/512x512/apps/rmerge.png"
+          cp assets/icons/rmerge_256x256.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/rmerge.png"
+          cp assets/icons/rmerge_128x128.png "${DEB_DIR}/usr/share/icons/hicolor/128x128/apps/rmerge.png"
+          cp assets/icons/rmerge_64x64.png "${DEB_DIR}/usr/share/icons/hicolor/64x64/apps/rmerge.png"
+          cp assets/icons/rmerge_48x48.png "${DEB_DIR}/usr/share/icons/hicolor/48x48/apps/rmerge.png"
+          cp assets/icons/rmerge_32x32.png "${DEB_DIR}/usr/share/icons/hicolor/32x32/apps/rmerge.png"
+          cp assets/icons/rmerge_16x16.png "${DEB_DIR}/usr/share/icons/hicolor/16x16/apps/rmerge.png"
+
+          dpkg-deb --build "${DEB_DIR}" "git-client_${VERSION}_amd64.deb"
+
+      # --- Package 3: RedHat / Fedora .rpm package ---
+      - name: Build RPM package
+        run: |
+          VERSION="${{ steps.vars.outputs.VERSION }}"
+          RPM_TOPDIR="$HOME/rpmbuild"
+          mkdir -p "$RPM_TOPDIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cp target/release/rmerge "$RPM_TOPDIR/SOURCES/"
+          cp target/release/rmerge-gui "$RPM_TOPDIR/SOURCES/"
+          cp packaging/rmerge.desktop "$RPM_TOPDIR/SOURCES/"
+          cp assets/icons/*.png "$RPM_TOPDIR/SOURCES/"
+          cp packaging/rpm/git-client.spec "$RPM_TOPDIR/SPECS/"
+
+          rpmbuild -bb --define "_topdir $RPM_TOPDIR" --define "version $VERSION" "$RPM_TOPDIR/SPECS/git-client.spec"
+          cp "$RPM_TOPDIR"/RPMS/*/*.rpm "git-client-${VERSION}-1.x86_64.rpm"
+
+      # --- Package 4: Linux AppImage ---
+      - name: Build AppImage
+        run: |
+          VERSION="${{ steps.vars.outputs.VERSION }}"
+          APPDIR="AppDir"
+          mkdir -p "$APPDIR/usr/bin"
+          mkdir -p "$APPDIR/usr/share/applications"
+          mkdir -p "$APPDIR/usr/share/icons/hicolor/512x512/apps"
+
+          cp target/release/rmerge "$APPDIR/usr/bin/"
+          cp target/release/rmerge-gui "$APPDIR/usr/bin/"
+          cp packaging/rmerge.desktop "$APPDIR/rmerge.desktop"
+          cp packaging/rmerge.desktop "$APPDIR/usr/share/applications/rmerge.desktop"
+          cp assets/icons/rmerge_512x512.png "$APPDIR/rmerge.png"
+          cp assets/icons/rmerge_512x512.png "$APPDIR/.DirIcon"
+          cp assets/icons/rmerge_512x512.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/rmerge.png"
+
+          # Create AppRun launcher
+          cat << 'EOF' > "$APPDIR/AppRun"
+          #!/bin/sh
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          export PATH="${HERE}/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+          exec "${HERE}/usr/bin/rmerge-gui" "$@"
+          EOF
+          chmod +x "$APPDIR/AppRun"
+
+          # Download and run appimagetool
+          curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          ./appimagetool --appimage-extract
+          ARCH=x86_64 ./squashfs-root/AppRun "$APPDIR" "git-client-${VERSION}-x86_64.AppImage"
+
+      - name: Upload Linux Artifacts to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            git-client-${{ steps.vars.outputs.VERSION }}-linux-x86_64.tar.gz
+            git-client_${{ steps.vars.outputs.VERSION }}_amd64.deb
+            git-client-${{ steps.vars.outputs.VERSION }}-1.x86_64.rpm
+            git-client-${{ steps.vars.outputs.VERSION }}-x86_64.AppImage
+
+  # =========================================================================
+  # 2. WINDOWS BUILD & PACKAGING (.zip & installer-ready binaries)
+  # =========================================================================
+  build-windows:
+    name: Windows x86_64 (.zip)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Extract Tag Version
+        id: vars
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build binaries (Release)
+        run: |
+          cargo build --release --workspace
+
+      - name: Create Windows Zip Package
+        shell: bash
+        run: |
+          VERSION="${{ steps.vars.outputs.VERSION }}"
+          DIR="git-client-${VERSION}-windows-x86_64"
+          mkdir -p "$DIR"
+          cp target/release/rmerge.exe "$DIR/"
+          cp target/release/rmerge-gui.exe "$DIR/"
+          cp assets/icons/rmerge.ico "$DIR/"
+          cp README.md LICENSE "$DIR/" 2>/dev/null || true
+          7z a "git-client-${VERSION}-windows-x86_64.zip" "$DIR"
+
+      - name: Upload Windows Artifact to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            git-client-${{ steps.vars.outputs.VERSION }}-windows-x86_64.zip
+
+  # =========================================================================
+  # 3. MACOS BUILD & PACKAGING (.app bundle & .tar.gz for x86_64 and arm64)
+  # =========================================================================
+  build-macos:
+    name: macOS (.tar.gz and .app)
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Extract Tag Version
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build binaries (Release)
+        run: |
+          cargo build --release --target ${{ matrix.target }} --workspace
+
+      - name: Assemble macOS .app Bundle and Tarball
+        run: |
+          VERSION="${{ steps.vars.outputs.VERSION }}"
+          TARGET="${{ matrix.target }}"
+          APP="Git-Client.app"
+          mkdir -p "${APP}/Contents/MacOS"
+          mkdir -p "${APP}/Contents/Resources"
+
+          cp "target/${TARGET}/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
+          cp "target/${TARGET}/release/rmerge" "${APP}/Contents/MacOS/rmerge"
+          chmod +x "${APP}/Contents/MacOS/rmerge-gui" "${APP}/Contents/MacOS/rmerge"
+
+          # Generate Info.plist with current version
+          sed "s/__VERSION__/${VERSION}/g" packaging/macos/Info.plist > "${APP}/Contents/Info.plist"
+
+          # Convert png to icns if sips and iconutil are available
+          mkdir -p icon.iconset
+          sips -z 16 16     assets/icons/rmerge_512x512.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32     assets/icons/rmerge_512x512.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32     assets/icons/rmerge_512x512.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64     assets/icons/rmerge_512x512.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128   assets/icons/rmerge_512x512.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256   assets/icons/rmerge_512x512.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256   assets/icons/rmerge_512x512.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512   assets/icons/rmerge_512x512.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512   assets/icons/rmerge_512x512.png --out icon.iconset/icon_512x512.png
+          iconutil -c icns icon.iconset -o "${APP}/Contents/Resources/rmerge.icns"
+          rm -rf icon.iconset
+
+          # Package as .tar.gz
+          tar -czvf "git-client-${VERSION}-${TARGET}.tar.gz" "${APP}"
+
+      - name: Upload macOS Artifact to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            git-client-${{ steps.vars.outputs.VERSION }}-${{ matrix.target }}.tar.gz

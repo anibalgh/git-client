@@ -17,7 +17,7 @@ Este documento establece las directrices y estándares para preservar la **Arqui
 
 > **Las dependencias en el código fuente solo deben apuntar HACIA ADENTRO, en dirección a las políticas de mayor nivel (el Dominio).**
 
-```
+```text
  ┌────────────────────────────────────────────────────────┐
  │  Drivers / Presentación (rmerge-gui, rmerge-cli)       │
  │   ┌────────────────────────────────────────────────────┤
@@ -28,7 +28,7 @@ Este documento establece las directrices y estándares para preservar la **Arqui
  │   │   │   │  Entidades / Dominio (rmerge-domain)       │
  │   │   │   │   • Cero dependencias externas             │
  │   │   │   │   • Lógica pura de negocio y Git           │
-```
+```text
 
 * **Ningún elemento de un círculo interior puede conocer nada sobre un círculo exterior:**
   * `rmerge-domain` **NUNCA** debe importar `rmerge-application`, `rmerge-infrastructure`, `rmerge-gui` ni `rmerge-cli`.
@@ -42,6 +42,7 @@ Este documento establece las directrices y estándares para preservar la **Arqui
 ## 2. Definición y Responsabilidades de las Capas
 
 ### Capa 1: Dominio (`crates/rmerge-domain`)
+
 * **Propósito:** Alojar las entidades de negocio críticas, objetos de valor y servicios de dominio.
 * **Componentes:**
   * `entities/`: Representaciones de conceptos fundamentales (`Commit`, `Branch`, `Tag`, `Diff`, `Author`, `ConflictFile`, `CommitGraph`).
@@ -51,6 +52,7 @@ Este documento establece las directrices y estándares para preservar la **Arqui
 * **Regla estricta:** Cero I/O, cero llamadas a red o sistema de archivos, 100% determinista y fácilmente testeable con pruebas unitarias puras.
 
 ### Capa 2: Aplicación (`crates/rmerge-application`)
+
 * **Propósito:** Orquestar el flujo de datos hacia y desde las entidades, y dirigir a las entidades para que usen sus reglas de negocio a fin de cumplir los casos de uso.
 * **Componentes:**
   * `ports/in/`: Contratos de casos de uso ejecutados por los actores externos (GUI, CLI).
@@ -59,6 +61,7 @@ Este documento establece las directrices y estándares para preservar la **Arqui
 * **Regla estricta:** No debe contener código de `libgit2`, `egui` ni I/O directo. Todo acceso externo ocurre a través de los traits en `ports/out/`.
 
 ### Capa 3: Infraestructura (`crates/rmerge-infrastructure`)
+
 * **Propósito:** Proveer las implementaciones concretas (adaptadores) para los puertos de salida de la aplicación.
 * **Componentes:**
   * `git/`: Implementación de operaciones Git mediante `libgit2` (`storage_adapter.rs`, `config_adapter.rs`).
@@ -68,6 +71,7 @@ Este documento establece las directrices y estándares para preservar la **Arqui
   * `ipc/`: Comunicación interproceso mediante sockets locales (`ipc_adapter.rs`).
 
 ### Capa 4: Presentación (`crates/rmerge-gui` y `crates/rmerge-cli`)
+
 * **Propósito:** Adaptadores primarios que interactúan con el usuario humano o con el entorno.
 * **Componentes:**
   * `rmerge-gui`: Aplicación gráfica basada en `egui` y `eframe`. Mantiene el estado de la UI (`state.rs`), renderiza las vistas (`views/`), gestiona temas, tipografías y eventos.

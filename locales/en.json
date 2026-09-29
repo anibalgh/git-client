@@ -4,13 +4,12 @@
   "open_repo_dialog_title": "Select Local Git Repository",
   "refresh": "🔄 Refresh",
   "home": "🏠 Home",
-  "show_graph": "📊 Branch Graph",
-  "hide_graph": "📊 Hide Graph",
+  "show_graph": "📊",
+  "hide_graph": "📊",
   "toggle_graph_tooltip": "Show or hide the change graph side panel",
   "theme": "Theme",
   "font_size": "Font Size",
   "language": "Language",
-
   "git_explorer": "Git Explorer",
   "branch_menu": "⚡ Branch Menu ▾",
   "menu_edit_gitignore": "📄 Edit / View .gitignore",
@@ -21,7 +20,6 @@
   "menu_create_pr": "🚀 Create PR / MR in Browser",
   "menu_refresh": "🔄 Refresh Repository",
   "refresh_tooltip": "Refresh Git status",
-
   "branches_header": "🌿 Branches",
   "branch_list": "Branch List",
   "new_branch_tooltip": "Create new branch...",
@@ -29,36 +27,29 @@
   "switch_branch_tooltip": "Switch to this branch",
   "push_actions_tooltip": "Push Actions",
   "pull_actions_tooltip": "Pull and Fetch Actions",
-
   "tags_header": "🏷 Tags",
   "tag_list": "Tag List",
   "new_tag_btn": "＋ New Tag...",
   "new_tag_tooltip": "Create a new tag...",
   "no_tags": "(No tags created)",
   "delete_tag_tooltip": "Delete this tag",
-
   "conflicts_header": "▲ Conflicts",
   "resolve_conflict": "Resolve:",
-
   "staged_header": "✔ Staged",
   "staged_view": "View staged files",
   "unstage_all_tooltip": "Unstage all (remove all files from stage)",
   "unstage_file_tooltip": "Unstage this file",
   "no_staged_changes": "(No staged changes)",
-
   "unstaged_header": "● Modified",
   "unstaged_view": "View modified files",
   "stage_all_tooltip": "Stage all (add all modified files to stage)",
   "stage_file_tooltip": "Stage this file",
   "no_unstaged_changes": "(No local modifications)",
-
   "untracked_header": "? Untracked",
   "stage_untracked_tooltip": "Stage this untracked file",
-
   "commit_message_label": "Commit Message:",
   "commit_message_hint": "Write commit description...",
   "commit_button": "✔ Make Commit (Ctrl+Enter)",
-
   "commit_history_title": "Commit History",
   "commits_count": "commits",
   "graph_col": "Graph",
@@ -66,7 +57,6 @@
   "message_col": "Message",
   "author_col": "Author",
   "date_col": "Date",
-
   "commit_detail_title": "Commit Detail",
   "commit_label": "Commit:",
   "tree_label": "Tree:",
@@ -80,7 +70,6 @@
   "files_changed_stat": "files changed",
   "insertions_stat": "insertions",
   "deletions_stat": "deletions",
-
   "modified_files_label": "Modified Files:",
   "select_file_placeholder": "Select modified file...",
   "diff_status_added": "Added",
@@ -90,7 +79,6 @@
   "diff_status_conflicted": "Conflict",
   "diff_status_modified": "Modified",
   "diff_status_badge": "Status:",
-
   "branch_graph_title": "📊 Change Graph",
   "branch_graph_close": "Close side panel",
   "branch_graph_selector": "Branch:",
@@ -100,7 +88,6 @@
   "graph_legend_merge": "◈ Merge (Join)",
   "graph_legend_fork": "Fork (Branch)",
   "graph_legend_head": "Branch head",
-
   "welcome_title": "Git-Client",
   "welcome_subtitle": "No Git repository found in the current directory",
   "recent_repos_title": "📂 Recently Opened Repositories",
@@ -108,30 +95,24 @@
   "clone_repo": "📥 Clone Repository...",
   "clear_history": "🗑 Clear History",
   "no_recent_repos": "No recent repositories in history",
-
   "modal_create_branch_title": "🌿 Create New Branch",
   "modal_branch_name_label": "Branch Name:",
   "modal_branch_start_label": "Start Point:",
   "modal_create_btn": "Create Branch",
   "modal_cancel_btn": "Cancel",
-
   "modal_switch_branch_title": "🔀 Switch Branch (Checkout)",
   "modal_switch_target_label": "Target Branch:",
   "modal_switch_btn": "Switch Branch",
-
   "modal_merge_title": "🔀 Merge Branch",
   "modal_merge_target_label": "Branch to Merge into current:",
   "modal_merge_btn": "Execute Merge",
-
   "modal_tag_title": "🏷 Create New Tag",
   "modal_tag_name_label": "Tag Name:",
   "modal_tag_message_label": "Message (optional):",
   "modal_tag_commit_label": "Commit or Branch:",
   "modal_create_tag_btn": "Create Tag",
-
   "modal_gitignore_title": "📄 .gitignore Editor",
   "modal_save_gitignore_btn": "💾 Save .gitignore",
-
   "preferences_title": "Appearance & Typography Preferences",
   "themes_title": "Visual Theme",
   "themes_subtitle": "Select a color theme (automatically saved):",
@@ -143,7 +124,6 @@
   "code_font_size_label": "Code Font Size",
   "enable_ligatures_label": "Enable Font Ligatures (->, !=, ===)",
   "close_btn": "Close",
-
   "about_title": "About Git-Client",
   "about_btn": "ℹ About",
   "about_version_label": "Version",
@@ -155,12 +135,33 @@
   "about_platform_value": "Cross-Platform (Linux, Windows, macOS)",
   "about_architecture_label": "Architecture",
   "about_architecture_value": "Clean / Hexagonal Architecture in Rust",
-
   "server_unreachable_title": "Remote Server Unreachable",
   "server_unreachable_timeout": "Connection timed out while reaching server '{host}:{port}' (2.5s).",
   "server_unreachable_refused": "Could not connect to remote server '{host}:{port}': {detail}",
   "server_unreachable_hint": "The remote repository is unreachable or requires a private/corporate network. Please check your Internet connection or verify that your VPN is connected.",
   "server_unreachable_cmd_failed": "Affected operation: {cmd}",
   "server_unreachable_action_btn": "Understood",
-  "running_command": "Running"
+  "running_command": "Running",
+  "clone_modal_title": "⬇ Clone Remote Repository",
+  "clone_modal_desc": "Enter remote Git repository URL and local destination path:",
+  "clone_url_label": "Repository URL:",
+  "clone_url_hint": "E.g.: https://github.com/user/project.git or git@github.com:user/project.git",
+  "clone_dest_label": "Destination Path:",
+  "clone_browse_btn": "Browse...",
+  "clone_auth_section": "🔐 HTTPS Authentication (GitHub, GitLab, Bitbucket, etc.):",
+  "clone_saved_cred_found": "✔ Found stored credentials for host '{host}' (User: {user})",
+  "clone_use_custom_cred": "Modify or enter different credentials",
+  "clone_username_label": "Username or Email:",
+  "clone_secret_label": "Token or Password (PAT):",
+  "clone_secret_hint": "Recommended: Personal Access Token (PAT) with read/clone permissions",
+  "clone_save_cred_checkbox": "Store credentials securely in centralized encrypted vault",
+  "clone_start_btn": "✔ Start Clone",
+  "clone_cancel_btn": "Cancel",
+  "clone_in_progress": "Cloning remote repository... Please wait.",
+  "status_messages_title": "Status Messages",
+  "status_messages_clear_all": "🗑 Clear All",
+  "status_messages_empty": "No messages recorded.",
+  "status_messages_close": "Close",
+  "status_messages_count": "Messages ({count})",
+  "status_messages_tooltip": "Double-click to view message details"
 }

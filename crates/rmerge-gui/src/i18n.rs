@@ -166,6 +166,30 @@ pub struct Translations {
     pub server_unreachable_cmd_failed: String,
     pub server_unreachable_action_btn: String,
     pub running_command: String,
+
+    pub clone_modal_title: String,
+    pub clone_modal_desc: String,
+    pub clone_url_label: String,
+    pub clone_url_hint: String,
+    pub clone_dest_label: String,
+    pub clone_browse_btn: String,
+    pub clone_auth_section: String,
+    pub clone_saved_cred_found: String,
+    pub clone_use_custom_cred: String,
+    pub clone_username_label: String,
+    pub clone_secret_label: String,
+    pub clone_secret_hint: String,
+    pub clone_save_cred_checkbox: String,
+    pub clone_start_btn: String,
+    pub clone_cancel_btn: String,
+    pub clone_in_progress: String,
+
+    pub status_messages_title: String,
+    pub status_messages_clear_all: String,
+    pub status_messages_empty: String,
+    pub status_messages_close: String,
+    pub status_messages_count: String,
+    pub status_messages_tooltip: String,
 }
 
 impl Translations {

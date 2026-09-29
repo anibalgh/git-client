@@ -2,7 +2,7 @@
 Name=Git-Client
 GenericName=Git Client
 Comment=Git-Client: Cliente Git de alto rendimiento desarrollado en Rust
-Exec=/home/anibalgh/Desarrollos/git-client/target/release/rmerge %F
+Exec=/home/anibalgh/Desarrollos/rust/git-client/target/release/rmerge %F
 Icon=rmerge
 Terminal=false
 Type=Application
@@ -14,4 +14,4 @@ Actions=OpenCurrent;
 
 [Desktop Action OpenCurrent]
 Name=Abrir Directorio Actual
-Exec=/home/anibalgh/Desarrollos/git-client/target/release/rmerge .
+Exec=/home/anibalgh/Desarrollos/rust/git-client/target/release/rmerge .

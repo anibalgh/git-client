@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use crate::i18n::Translations;
 use rmerge_application::ports::r#in::{AvailableFonts, RepositoryData};
 use rmerge_domain::entities::{CommitDetail, ConfigScope, ThreeWayMergeFile};
 use rmerge_domain::value_objects::{ThemeConfig, TypographyConfig};
-use crate::i18n::Translations;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct IdentityModalState {
@@ -28,6 +28,8 @@ pub struct AppState {
     pub show_preferences: bool,
     pub active_merge: Option<ThreeWayMergeFile>,
     pub status_message: Option<String>,
+    pub status_messages: Vec<String>,
+    pub show_status_messages_modal: bool,
     pub is_valid_repo: bool,
     pub recent_repos: Vec<String>,
     pub show_clone_modal: bool,
@@ -35,6 +37,11 @@ pub struct AppState {
     pub clone_destination: String,
     pub clone_error: Option<String>,
     pub is_cloning: bool,
+    pub clone_username: String,
+    pub clone_secret: String,
+    pub clone_save_credentials: bool,
+    pub clone_has_saved_credential: bool,
+    pub clone_override_saved_cred: bool,
     pub show_manual_open_modal: bool,
     pub manual_open_path: String,
 
@@ -127,12 +134,19 @@ impl AppState {
             typography: TypographyConfig::default(),
             available_fonts: AvailableFonts {
                 system_fonts: vec!["Inter".into(), "Segoe UI".into(), "SF Pro Text".into()],
-                monospace_fonts: vec!["JetBrains Mono".into(), "Fira Code".into(), "Cascadia Code".into(), "monospace".into()],
+                monospace_fonts: vec![
+                    "JetBrains Mono".into(),
+                    "Fira Code".into(),
+                    "Cascadia Code".into(),
+                    "monospace".into(),
+                ],
             },
             identity_modal: None,
             show_preferences: false,
             active_merge: None,
             status_message: None,
+            status_messages: Vec::new(),
+            show_status_messages_modal: false,
             is_valid_repo: false,
             recent_repos: Vec::new(),
             show_clone_modal: false,
@@ -140,6 +154,11 @@ impl AppState {
             clone_destination: String::new(),
             clone_error: None,
             is_cloning: false,
+            clone_username: String::new(),
+            clone_secret: String::new(),
+            clone_save_credentials: true,
+            clone_has_saved_credential: false,
+            clone_override_saved_cred: false,
             show_manual_open_modal: false,
             manual_open_path: String::new(),
 
@@ -212,10 +231,31 @@ impl AppState {
     }
 
     pub fn set_status(&mut self, msg: impl Into<String>) {
-        self.status_message = Some(msg.into());
+        let s = msg.into();
+        self.status_message = Some(s.clone());
+        self.status_messages.push(s);
+        if self.status_messages.len() > 100 {
+            self.status_messages.remove(0);
+        }
     }
 
-    pub fn open_identity_modal(&mut self, suggested_name: Option<String>, suggested_email: Option<String>) {
+    pub fn remove_status_message(&mut self, index: usize) {
+        if index < self.status_messages.len() {
+            self.status_messages.remove(index);
+            self.status_message = self.status_messages.last().cloned();
+        }
+    }
+
+    pub fn clear_status_messages(&mut self) {
+        self.status_messages.clear();
+        self.status_message = None;
+    }
+
+    pub fn open_identity_modal(
+        &mut self,
+        suggested_name: Option<String>,
+        suggested_email: Option<String>,
+    ) {
         self.identity_modal = Some(IdentityModalState {
             name: suggested_name.unwrap_or_default(),
             email: suggested_email.unwrap_or_default(),
@@ -244,19 +284,17 @@ mod tests {
         state.add_recent_repo("/repo/third".into());
 
         // Debe estar ordenado de más reciente a más antiguo
-        assert_eq!(state.recent_repos, vec![
-            "/repo/third",
-            "/repo/second",
-            "/repo/first",
-        ]);
+        assert_eq!(
+            state.recent_repos,
+            vec!["/repo/third", "/repo/second", "/repo/first",]
+        );
 
         // Si se vuelve a abrir un repo existente, debe moverse al frente (índice 0)
         state.add_recent_repo("/repo/first".into());
-        assert_eq!(state.recent_repos, vec![
-            "/repo/first",
-            "/repo/third",
-            "/repo/second",
-        ]);
+        assert_eq!(
+            state.recent_repos,
+            vec!["/repo/first", "/repo/third", "/repo/second",]
+        );
     }
 
     #[test]
@@ -271,5 +309,28 @@ mod tests {
 
         state.clear_recent_repos();
         assert!(state.recent_repos.is_empty());
+    }
+
+    #[test]
+    fn test_status_messages_history_and_removal() {
+        let mut state = AppState::new(PathBuf::from("."));
+        assert!(state.status_messages.is_empty());
+        assert!(state.status_message.is_none());
+
+        state.set_status("Mensaje 1");
+        assert_eq!(state.status_messages.len(), 1);
+        assert_eq!(state.status_message.as_deref(), Some("Mensaje 1"));
+
+        state.set_status("Mensaje 2");
+        assert_eq!(state.status_messages.len(), 2);
+        assert_eq!(state.status_message.as_deref(), Some("Mensaje 2"));
+
+        state.remove_status_message(1);
+        assert_eq!(state.status_messages.len(), 1);
+        assert_eq!(state.status_message.as_deref(), Some("Mensaje 1"));
+
+        state.clear_status_messages();
+        assert!(state.status_messages.is_empty());
+        assert!(state.status_message.is_none());
     }
 }

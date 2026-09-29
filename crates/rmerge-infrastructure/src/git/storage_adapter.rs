@@ -5,13 +5,15 @@ use chrono::{DateTime, TimeZone, Utc};
 use rmerge_application::ports::out::GitStoragePort;
 use rmerge_domain::entities::{
     Branch, Commit, CommitDetail, CommitFileDiff, CommitStats, DeltaKind, DiffLine, FilePatch,
-    GitAuthor, Hunk, MergeOutcome, StagingArea, Tag,
+    GitAuthor, GitCredential, Hunk, MergeOutcome, StagingArea, Tag,
 };
+use rmerge_application::ports::out::CredentialStoragePort;
+use std::sync::Arc;
 use rmerge_domain::errors::DomainError;
 
-fn create_remote_callbacks() -> RemoteCallbacks<'static> {
+fn create_remote_callbacks(saved_credential: Option<GitCredential>) -> RemoteCallbacks<'static> {
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, allowed_types| {
+    callbacks.credentials(move |_url, username_from_url, allowed_types| {
         let user = username_from_url.unwrap_or("git");
 
         // 1. Si el servidor remoto soporta autenticación SSH
@@ -40,6 +42,14 @@ fn create_remote_callbacks() -> RemoteCallbacks<'static> {
 
         // 2. Si es HTTPS con credenciales de usuario/contraseña o token
         if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
+            // A. Primero intentar con credencial segura guardada en nuestro almacén centralizado
+            if let Some(ref saved) = saved_credential {
+                if let Ok(cred) = Cred::userpass_plaintext(&saved.username, &saved.secret) {
+                    return Ok(cred);
+                }
+            }
+
+            // B. Intentar con el credential helper de git estándar
             if let Ok(config) = Config::open_default() {
                 if let Ok(cred) = Cred::credential_helper(&config, _url, username_from_url) {
                     return Ok(cred);
@@ -55,16 +65,20 @@ fn create_remote_callbacks() -> RemoteCallbacks<'static> {
         Cred::default()
     });
 
-    callbacks.certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
-
     callbacks
 }
 
-pub struct Git2StorageAdapter;
+pub struct Git2StorageAdapter {
+    credential_storage: Option<Arc<dyn CredentialStoragePort>>,
+}
 
 impl Git2StorageAdapter {
     pub fn new() -> Self {
-        Self
+        Self { credential_storage: None }
+    }
+
+    pub fn with_credentials(credential_storage: Arc<dyn CredentialStoragePort>) -> Self {
+        Self { credential_storage: Some(credential_storage) }
     }
 }
 
@@ -291,7 +305,7 @@ impl GitStoragePort for Git2StorageAdapter {
         let head = repo.head().map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
         let head_commit = head.peel_to_commit().map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
 
-        repo.reset_default(Some(&head_commit.as_object()), [file_path])
+        repo.reset_default(Some(head_commit.as_object()), [file_path])
             .map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
 
         Ok(())
@@ -367,8 +381,18 @@ impl GitStoragePort for Git2StorageAdapter {
         let dest = destination.to_path_buf();
         let url_str = url.to_string();
 
+        let host = GitCredential::extract_host(url);
+        let saved_cred = if let Some(ref cred_store) = self.credential_storage {
+            cred_store.get_credential(&host).await.ok().flatten()
+        } else {
+            None
+        };
+
+        let cred_for_git2 = saved_cred.clone();
+        let cred_for_cli = saved_cred.clone();
+
         tokio::task::spawn_blocking(move || {
-            let callbacks = create_remote_callbacks();
+            let callbacks = create_remote_callbacks(cred_for_git2);
             let mut fetch_opts = git2::FetchOptions::new();
             fetch_opts.remote_callbacks(callbacks);
 
@@ -385,10 +409,24 @@ impl GitStoragePort for Git2StorageAdapter {
                         let _ = std::fs::remove_dir_all(&dest);
                     }
 
+                    let clone_url_final = if let Some(ref cred) = cred_for_cli {
+                        if (url_str.starts_with("https://") || url_str.starts_with("http://")) && !url_str.contains("@") {
+                            let scheme = if url_str.starts_with("https://") { "https://" } else { "http://" };
+                            let remainder = url_str.trim_start_matches(scheme);
+                            let encoded_user = percent_encoding_light(&cred.username);
+                            let encoded_secret = percent_encoding_light(&cred.secret);
+                            format!("{scheme}{encoded_user}:{encoded_secret}@{remainder}")
+                        } else {
+                            url_str.clone()
+                        }
+                    } else {
+                        url_str.clone()
+                    };
+
                     let output = std::process::Command::new("git")
                         .arg("clone")
                         .arg("--")
-                        .arg(&url_str)
+                        .arg(&clone_url_final)
                         .arg(&dest)
                         .output();
 
@@ -453,7 +491,7 @@ impl GitStoragePort for Git2StorageAdapter {
 
         if let Ok(head) = repo.head() {
             if let Ok(commit) = head.peel_to_commit() {
-                repo.reset_default(Some(&commit.as_object()), ["*"])
+                repo.reset_default(Some(commit.as_object()), ["*"])
                     .map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
                 return Ok(());
             }
@@ -593,7 +631,7 @@ impl GitStoragePort for Git2StorageAdapter {
             .map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
 
         // 2. Analizar el merge
-        let (analysis, _) = repo.merge_analysis(&[&annotated_commit])
+        let (analysis, _) = repo.merge_analysis(&[&annotated_commit][..])
             .map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
 
         if analysis.is_up_to_date() {
@@ -621,7 +659,7 @@ impl GitStoragePort for Git2StorageAdapter {
             let mut checkout_opts = git2::build::CheckoutBuilder::new();
             checkout_opts.safe();
 
-            repo.merge(&[&annotated_commit], Some(&mut merge_opts), Some(&mut checkout_opts))
+            repo.merge(&[&annotated_commit][..], Some(&mut merge_opts), Some(&mut checkout_opts))
                 .map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
 
             let mut index = repo.index()
@@ -655,7 +693,7 @@ impl GitStoragePort for Git2StorageAdapter {
                 &sig,
                 &format!("Merge branch '{source_branch}'"),
                 &tree,
-                &[&head_commit, &source_commit],
+                &[&head_commit, &source_commit][..],
             ).map_err(|e| DomainError::GitOperationFailed(e.to_string()))?;
 
             repo.cleanup_state()
@@ -897,7 +935,7 @@ fn parse_file_hunks(repo: &Repository, file_path: &str, staged: bool) -> Result<
 
     diff.print(git2::DiffFormat::Patch, |_delta, git_hunk, line| {
         if let Some(h) = git_hunk {
-            if current_hunk.as_ref().map_or(true, |curr| curr.header != std::str::from_utf8(h.header()).unwrap_or_default()) {
+            if current_hunk.as_ref().is_none_or(|curr| curr.header != std::str::from_utf8(h.header()).unwrap_or_default()) {
                 if let Some(finished) = current_hunk.take() {
                     hunks.push(finished);
                 }
@@ -935,4 +973,20 @@ fn parse_file_hunks(repo: &Repository, file_path: &str, staged: bool) -> Result<
     }
 
     Ok(hunks)
+}
+
+fn percent_encoding_light(input: &str) -> String {
+    let mut encoded = String::with_capacity(input.len());
+    for b in input.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(b as char);
+            }
+            _ => {
+                use std::fmt::Write;
+                let _ = write!(encoded, "%{b:02X}");
+            }
+        }
+    }
+    encoded
 }

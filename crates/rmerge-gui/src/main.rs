@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod i18n;
 mod ipc_server;
 mod state;
@@ -13,7 +15,7 @@ use rmerge_application::ports::r#in::{
     ManageGitignoreUseCase, ManageStagingUseCase, ManageTagsUseCase, ManageTypographyUseCase, RemoteUrlUseCase, ThreeWayMergeUseCase,
 };
 use rmerge_application::use_cases::{
-    AuthorService, CommitService, MergeService, RepositoryService, StagingService, TypographyService,
+    AuthorService, CommitService, CredentialService, MergeService, RepositoryService, StagingService, TypographyService,
 };
 use rmerge_domain::entities::{
     ConfigScope, ConflictResolution, DeltaKind, FilePatch, GitAuthor,
@@ -22,6 +24,7 @@ use rmerge_domain::value_objects::{ThemeConfig, ThemeMode};
 use rmerge_infrastructure::fonts::FontKitAdapter;
 use rmerge_infrastructure::git::{Git2StorageAdapter, GitConfigAdapter};
 use rmerge_infrastructure::ipc::IpcMessage;
+use rmerge_infrastructure::credentials::EncryptedCredentialAdapter;
 use rmerge_infrastructure::settings::JsonSettingsAdapter;
 use rmerge_infrastructure::themes::EmbeddedThemeAdapter;
 
@@ -44,6 +47,7 @@ pub struct RmergeGuiApp {
     staging_service: Arc<StagingService>,
     merge_service: Arc<MergeService>,
     _typography_service: Arc<TypographyService>,
+    credential_service: Arc<CredentialService>,
     theme_storage: Arc<EmbeddedThemeAdapter>,
     settings_storage: Arc<JsonSettingsAdapter>,
     ipc_rx: std::sync::mpsc::Receiver<IpcMessage>,
@@ -70,35 +74,35 @@ pub fn extract_remote_host_and_port(raw_url: &str) -> Option<(String, u16)> {
     // 1. SSH URL scheme: ssh://[user@]host[:port]/path
     if let Some(rest) = url.strip_prefix("ssh://") {
         let authority = rest.split('/').next().unwrap_or(rest);
-        let host_port = authority.split('@').last().unwrap_or(authority);
+        let host_port = authority.split('@').next_back().unwrap_or(authority);
         return parse_host_port(host_port, 22);
     }
 
     // 2. HTTPS scheme: https://[user:pass@]host[:port]/path
     if let Some(rest) = url.strip_prefix("https://") {
         let authority = rest.split('/').next().unwrap_or(rest);
-        let host_port = authority.split('@').last().unwrap_or(authority);
+        let host_port = authority.split('@').next_back().unwrap_or(authority);
         return parse_host_port(host_port, 443);
     }
 
     // 3. HTTP scheme: http://[user:pass@]host[:port]/path
     if let Some(rest) = url.strip_prefix("http://") {
         let authority = rest.split('/').next().unwrap_or(rest);
-        let host_port = authority.split('@').last().unwrap_or(authority);
+        let host_port = authority.split('@').next_back().unwrap_or(authority);
         return parse_host_port(host_port, 80);
     }
 
     // 4. Git scheme: git://host[:port]/path
     if let Some(rest) = url.strip_prefix("git://") {
         let authority = rest.split('/').next().unwrap_or(rest);
-        let host_port = authority.split('@').last().unwrap_or(authority);
+        let host_port = authority.split('@').next_back().unwrap_or(authority);
         return parse_host_port(host_port, 9418);
     }
 
     // 5. Scp-style SSH syntax: [user@]host:path/to/repo.git
     if !url.contains("://") && url.contains(':') {
         let before_colon = url.split(':').next().unwrap_or("");
-        let host = before_colon.split('@').last().unwrap_or(before_colon);
+        let host = before_colon.split('@').next_back().unwrap_or(before_colon);
         if !host.is_empty() && !host.contains('/') && !host.contains('\\') {
             return Some((host.to_string(), 22));
         }
@@ -146,7 +150,7 @@ async fn check_remote_connectivity(host: &str, port: u16) -> ConnectivityResult 
     use std::time::Duration;
     use tokio::net::TcpStream;
 
-    let target = format!("{}:{}", host, port);
+    let target = format!("{host}:{port}");
     // Timeout breve de 2500ms (2.5 segundos) para no hacer esperar al usuario
     match tokio::time::timeout(Duration::from_millis(2500), TcpStream::connect(&target)).await {
         Ok(Ok(_stream)) => ConnectivityResult::Reachable,
@@ -160,7 +164,9 @@ impl RmergeGuiApp {
         initial_path: PathBuf,
         ipc_rx: std::sync::mpsc::Receiver<IpcMessage>,
     ) -> Self {
-        let git_storage = Arc::new(Git2StorageAdapter::new());
+        let credential_storage = Arc::new(EncryptedCredentialAdapter::new());
+        let credential_service = Arc::new(CredentialService::new(credential_storage.clone()));
+        let git_storage = Arc::new(Git2StorageAdapter::with_credentials(credential_storage.clone()));
         let git_config = Arc::new(GitConfigAdapter::new());
         let font_discovery = Arc::new(FontKitAdapter::new());
         let settings_storage = Arc::new(JsonSettingsAdapter::new());
@@ -229,6 +235,7 @@ impl RmergeGuiApp {
             staging_service,
             merge_service,
             _typography_service: typography_service,
+            credential_service,
             theme_storage,
             settings_storage,
             ipc_rx,
@@ -830,14 +837,9 @@ impl eframe::App for RmergeGuiApp {
                             draw_branch_icon(ui, egui::Color32::from_rgb(152, 195, 121), 14.0);
                             ui.label(egui::RichText::new(branch).strong().color(egui::Color32::from_rgb(152, 195, 121)));
 
-                            // Botón de Branch Graphic justo a la derecha del nombre de la rama
+                            // Botón de Branch Graphic sólo con icono y tooltip
                             ui.add_space(4.0);
-                            let graph_btn_text = if self.state.show_right_graph_panel {
-                                &self.state.i18n.hide_graph
-                            } else {
-                                &self.state.i18n.show_graph
-                            };
-                            if ui.selectable_label(self.state.show_right_graph_panel, graph_btn_text)
+                            if ui.selectable_label(self.state.show_right_graph_panel, "📊")
                                 .on_hover_text(&self.state.i18n.toggle_graph_tooltip)
                                 .clicked()
                             {
@@ -913,20 +915,35 @@ impl eframe::App for RmergeGuiApp {
                             .color(egui::Color32::from_rgb(97, 175, 239))
                             .strong(),
                     );
-                } else if let Some(ref msg) = self.state.status_message {
-                    let color = if msg.starts_with('✔') {
-                        egui::Color32::from_rgb(152, 195, 121)
-                    } else if msg.starts_with('❌') {
-                        egui::Color32::from_rgb(224, 108, 117)
-                    } else if msg.starts_with("⚠️") {
-                        egui::Color32::from_rgb(229, 192, 123)
+                } else if !self.state.status_messages.is_empty() {
+                    let count = self.state.status_messages.len();
+                    let (status_text, color) = if count > 1 {
+                        (format!("💬 {}", self.state.i18n.status_messages_count.replace("{count}", &count.to_string())), egui::Color32::from_rgb(97, 175, 239))
                     } else {
-                        ui.visuals().text_color()
+                        let msg = &self.state.status_messages[0];
+                        let col = if msg.starts_with('✔') {
+                            egui::Color32::from_rgb(152, 195, 121)
+                        } else if msg.starts_with('❌') {
+                            egui::Color32::from_rgb(224, 108, 117)
+                        } else if msg.starts_with("⚠️") {
+                            egui::Color32::from_rgb(229, 192, 123)
+                        } else {
+                            ui.visuals().text_color()
+                        };
+                        (msg.clone(), col)
                     };
-                    ui.label(egui::RichText::new(msg).color(color));
 
-                    if ui.small_button("✖").on_hover_text("Limpiar mensaje").clicked() {
-                        self.state.status_message = None;
+                    let resp = ui.add(
+                        egui::Label::new(egui::RichText::new(status_text).color(color))
+                            .sense(egui::Sense::click())
+                    ).on_hover_text(&self.state.i18n.status_messages_tooltip);
+
+                    if resp.double_clicked() {
+                        self.state.show_status_messages_modal = true;
+                    }
+
+                    if ui.small_button("✖").on_hover_text(&self.state.i18n.status_messages_clear_all).clicked() {
+                        self.state.clear_status_messages();
                     }
                 } else {
                     ui.weak("Listo");
@@ -1226,7 +1243,7 @@ impl eframe::App for RmergeGuiApp {
                                 } else {
                                     for file in &data.staging.staged {
                                         ui.horizontal(|ui| {
-                                            let is_selected = self.selected_file_patch.as_ref().map_or(false, |f| f.path == file.path && f.is_staged);
+                                            let is_selected = self.selected_file_patch.as_ref().is_some_and(|f| f.path == file.path && f.is_staged);
                                             if ui.selectable_label(is_selected, format!("+ {}", file.path)).clicked() {
                                                 action_select_file = Some(file.clone());
                                             }
@@ -1264,7 +1281,7 @@ impl eframe::App for RmergeGuiApp {
                                 } else {
                                     for file in &data.staging.unstaged {
                                         ui.horizontal(|ui| {
-                                            let is_selected = self.selected_file_patch.as_ref().map_or(false, |f| f.path == file.path && !f.is_staged);
+                                            let is_selected = self.selected_file_patch.as_ref().is_some_and(|f| f.path == file.path && !f.is_staged);
                                             if ui.selectable_label(is_selected, format!("M {}", file.path)).clicked() {
                                                 action_select_file = Some(file.clone());
                                             }
@@ -1386,7 +1403,7 @@ impl eframe::App for RmergeGuiApp {
                 }
 
                 // Commit Box abajo del panel lateral (solo visible y activo si hay archivos preparados)
-                let has_staged = self.state.repo_data.as_ref().map_or(false, |d| !d.staging.staged.is_empty());
+                let has_staged = self.state.repo_data.as_ref().is_some_and(|d| !d.staging.staged.is_empty());
                 if has_staged {
                     ui.separator();
                     let ui_size = self.state.typography.ui_font.size_pt;
@@ -2098,8 +2115,8 @@ impl eframe::App for RmergeGuiApp {
                                 );
 
                                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                    if count > 0 {
-                                        if ui
+                                    if count > 0
+                                        && ui
                                             .button(
                                                 egui::RichText::new("🗑 Borrar Historial")
                                                     .color(egui::Color32::from_rgb(224, 108, 117)),
@@ -2110,7 +2127,6 @@ impl eframe::App for RmergeGuiApp {
                                             self.state.clear_recent_repos();
                                             self.save_preferences();
                                         }
-                                    }
                                 });
                             });
 
@@ -2194,11 +2210,10 @@ impl eframe::App for RmergeGuiApp {
                                                         {
                                                             repo_to_remove = Some(repo_path_str.clone());
                                                         }
-                                                        if exists {
-                                                            if ui.button("Abrir").clicked() {
+                                                        if exists
+                                                            && ui.button("Abrir").clicked() {
                                                                 repo_to_open = Some(path.clone());
                                                             }
-                                                        }
                                                     },
                                                 );
                                             });
@@ -2646,31 +2661,55 @@ impl eframe::App for RmergeGuiApp {
             }
         }
 
-        // 8. Modal: Clonar Repositorio Remoto
+        // 8. Modal: Clonar Repositorio Remoto con soporte de Credenciales HTTPS Seguras
         if self.state.show_clone_modal {
             let mut trigger_clone = false;
             let mut close_clone = false;
 
-            egui::Window::new("⬇ Clonar Repositorio Remoto")
+            egui::Window::new(&self.state.i18n.clone_modal_title)
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .min_width(520.0)
+                .min_width(540.0)
                 .show(ctx, |ui| {
-                    ui.label("Ingrese la URL del repositorio Git remoto y la carpeta de destino local:");
+                    ui.label(&self.state.i18n.clone_modal_desc);
                     ui.separator();
 
                     ui.horizontal(|ui| {
-                        ui.label("URL del Repositorio: ");
-                        ui.text_edit_singleline(&mut self.state.clone_url);
+                        ui.label(&self.state.i18n.clone_url_label);
+                        let prev_url = self.state.clone_url.clone();
+                        let resp = ui.text_edit_singleline(&mut self.state.clone_url);
+                        if resp.changed() && self.state.clone_url != prev_url {
+                            // Si cambió la URL, verificar si existen credenciales guardadas para el host
+                            let trimmed = self.state.clone_url.trim();
+                            if trimmed.starts_with("https://") || trimmed.starts_with("http://") {
+                                use rmerge_domain::entities::GitCredential;
+                                use rmerge_application::ports::r#in::ManageCredentialsUseCase;
+                                let host = GitCredential::extract_host(trimmed);
+                                let cred_svc = self.credential_service.clone();
+                                let found = tokio::task::block_in_place(|| {
+                                    tokio::runtime::Handle::current().block_on(cred_svc.find_credential(&host))
+                                }).unwrap_or(None);
+
+                                if let Some(cred) = found {
+                                    self.state.clone_username = cred.username;
+                                    self.state.clone_secret = cred.secret;
+                                    self.state.clone_has_saved_credential = true;
+                                } else {
+                                    self.state.clone_has_saved_credential = false;
+                                }
+                            } else {
+                                self.state.clone_has_saved_credential = false;
+                            }
+                        }
                     });
-                    ui.label(egui::RichText::new("Ej: https://github.com/usuario/proyecto.git").weak().size(11.0));
+                    ui.label(egui::RichText::new(&self.state.i18n.clone_url_hint).weak().size(11.0));
 
                     ui.add_space(6.0);
                     ui.horizontal(|ui| {
-                        ui.label("Carpeta de Destino: ");
+                        ui.label(&self.state.i18n.clone_dest_label);
                         ui.text_edit_singleline(&mut self.state.clone_destination);
-                        if ui.button("Examinar...").clicked() {
+                        if ui.button(&self.state.i18n.clone_browse_btn).clicked() {
                             if let Some(folder) = rfd::FileDialog::new()
                                 .set_title("Seleccionar Carpeta de Destino")
                                 .pick_folder()
@@ -2678,7 +2717,7 @@ impl eframe::App for RmergeGuiApp {
                                 let mut target = folder;
                                 let url_trimmed = self.state.clone_url.trim();
                                 if !url_trimmed.is_empty() {
-                                    if let Some(repo_name) = url_trimmed.split('/').last() {
+                                    if let Some(repo_name) = url_trimmed.split('/').next_back() {
                                         let clean_name = repo_name.trim_end_matches(".git");
                                         if !clean_name.is_empty() && !target.ends_with(clean_name) {
                                             target = target.join(clean_name);
@@ -2690,6 +2729,41 @@ impl eframe::App for RmergeGuiApp {
                         }
                     });
 
+                    // Sección de autenticación HTTPS si la URL es HTTPS/HTTP
+                    let url_trimmed = self.state.clone_url.trim();
+                    let is_https = url_trimmed.starts_with("https://") || url_trimmed.starts_with("http://");
+                    if is_https {
+                        ui.add_space(10.0);
+                        ui.group(|ui| {
+                            ui.label(egui::RichText::new(&self.state.i18n.clone_auth_section).strong());
+                            use rmerge_domain::entities::GitCredential;
+                            let host = GitCredential::extract_host(url_trimmed);
+
+                            if self.state.clone_has_saved_credential && !self.state.clone_override_saved_cred {
+                                ui.add_space(4.0);
+                                let msg = self.state.i18n.clone_saved_cred_found
+                                    .replace("{host}", &host)
+                                    .replace("{user}", &self.state.clone_username);
+                                ui.label(egui::RichText::new(msg).color(egui::Color32::from_rgb(152, 195, 121)));
+                                if ui.small_button(&self.state.i18n.clone_use_custom_cred).clicked() {
+                                    self.state.clone_override_saved_cred = true;
+                                }
+                            } else {
+                                ui.add_space(6.0);
+                                ui.horizontal(|ui| {
+                                    ui.label(&self.state.i18n.clone_username_label);
+                                    ui.text_edit_singleline(&mut self.state.clone_username);
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label(&self.state.i18n.clone_secret_label);
+                                    ui.add(egui::TextEdit::singleline(&mut self.state.clone_secret).password(true));
+                                });
+                                ui.label(egui::RichText::new(&self.state.i18n.clone_secret_hint).weak().size(11.0));
+                                ui.checkbox(&mut self.state.clone_save_credentials, &self.state.i18n.clone_save_cred_checkbox);
+                            }
+                        });
+                    }
+
                     if let Some(ref err) = self.state.clone_error {
                         ui.add_space(8.0);
                         ui.label(egui::RichText::new(format!("Error: {err}")).color(egui::Color32::from_rgb(224, 108, 117)));
@@ -2699,7 +2773,7 @@ impl eframe::App for RmergeGuiApp {
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
                             ui.spinner();
-                            ui.label(egui::RichText::new("Clonando repositorio remoto... Por favor espere.").color(egui::Color32::from_rgb(97, 175, 239)));
+                            ui.label(egui::RichText::new(&self.state.i18n.clone_in_progress).color(egui::Color32::from_rgb(97, 175, 239)));
                         });
                     }
 
@@ -2708,10 +2782,10 @@ impl eframe::App for RmergeGuiApp {
                     ui.horizontal(|ui| {
                         if !self.state.is_cloning {
                             let can_clone = !self.state.clone_url.trim().is_empty() && !self.state.clone_destination.trim().is_empty();
-                            if ui.add_enabled(can_clone, egui::Button::new("✔ Iniciar Clonación")).clicked() {
+                            if ui.add_enabled(can_clone, egui::Button::new(&self.state.i18n.clone_start_btn)).clicked() {
                                 trigger_clone = true;
                             }
-                            if ui.button("Cancelar").clicked() {
+                            if ui.button(&self.state.i18n.clone_cancel_btn).clicked() {
                                 close_clone = true;
                             }
                         } else {
@@ -2725,10 +2799,21 @@ impl eframe::App for RmergeGuiApp {
                 let dest = PathBuf::from(self.state.clone_destination.trim());
                 let tx = self.clone_tx.clone();
                 let svc = self.repo_service.clone();
+                let cred_svc = self.credential_service.clone();
+                let username = self.state.clone_username.trim().to_string();
+                let secret = self.state.clone_secret.trim().to_string();
+                let save_cred = self.state.clone_save_credentials;
+
                 self.state.is_cloning = true;
                 self.state.clone_error = None;
 
                 self.tokio_handle.spawn(async move {
+                    use rmerge_application::ports::r#in::ManageCredentialsUseCase;
+                    // Si el usuario ingresó credenciales y activó la casilla de guardado seguro, persistirlas en la BD
+                    if !username.is_empty() && !secret.is_empty() && save_cred {
+                        let _ = cred_svc.store_credential(&url, &username, &secret).await;
+                    }
+
                     let res = svc.clone_repo(&url, &dest).await;
                     let _ = tx.send(res.map(|_| dest).map_err(|e| e.to_string()));
                 });
@@ -3238,6 +3323,87 @@ impl eframe::App for RmergeGuiApp {
                 self.state.gitignore_save_error = None;
             }
         }
+
+        // 11. Modal: Historial y Detalle de Mensajes de Estado
+        if self.state.show_status_messages_modal {
+            let mut close_modal = false;
+            let mut msg_to_remove = None;
+            let mut clear_all = false;
+
+            egui::Window::new(&self.state.i18n.status_messages_title)
+                .collapsible(false)
+                .resizable(true)
+                .default_size([550.0, 360.0])
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        let count = self.state.status_messages.len();
+                        ui.label(egui::RichText::new(format!("{}: {count}", self.state.i18n.status_messages_title)).strong());
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if count > 0 && ui.button(egui::RichText::new(&self.state.i18n.status_messages_clear_all).color(egui::Color32::from_rgb(224, 108, 117))).clicked() {
+                                clear_all = true;
+                            }
+                        });
+                    });
+                    ui.separator();
+
+                    if self.state.status_messages.is_empty() {
+                        ui.add_space(20.0);
+                        ui.vertical_centered(|ui| {
+                            ui.label(egui::RichText::new(&self.state.i18n.status_messages_empty).italics().weak());
+                        });
+                        ui.add_space(20.0);
+                    } else {
+                        egui::ScrollArea::vertical()
+                            .id_salt("status_messages_modal_scroll")
+                            .max_height(260.0)
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                for (idx, msg) in self.state.status_messages.iter().enumerate() {
+                                    ui.group(|ui| {
+                                        ui.horizontal(|ui| {
+                                            ui.label(egui::RichText::new(format!("#{}.", idx + 1)).weak());
+                                            let color = if msg.starts_with('✔') {
+                                                egui::Color32::from_rgb(152, 195, 121)
+                                            } else if msg.starts_with('❌') {
+                                                egui::Color32::from_rgb(224, 108, 117)
+                                            } else if msg.starts_with("⚠️") {
+                                                egui::Color32::from_rgb(229, 192, 123)
+                                            } else {
+                                                ui.visuals().text_color()
+                                            };
+                                            ui.label(egui::RichText::new(msg).color(color));
+
+                                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                                if ui.small_button("✕").on_hover_text("Cerrar este mensaje").clicked() {
+                                                    msg_to_remove = Some(idx);
+                                                }
+                                            });
+                                        });
+                                    });
+                                    ui.add_space(3.0);
+                                }
+                            });
+                    }
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if ui.button(&self.state.i18n.status_messages_close).clicked() {
+                            close_modal = true;
+                        }
+                    });
+                });
+
+            if clear_all {
+                self.state.clear_status_messages();
+            } else if let Some(idx) = msg_to_remove {
+                self.state.remove_status_message(idx);
+            }
+
+            if close_modal {
+                self.state.show_status_messages_modal = false;
+            }
+        }
     }
 }
 
@@ -3323,6 +3489,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Configuración de la Ventana Nativa Desktop
     let icon_data = load_app_icon();
     let mut viewport = egui::ViewportBuilder::default()
+        .with_app_id("rmerge-gui")
         .with_inner_size([1280.0, 800.0])
         .with_min_inner_size([800.0, 500.0])
         .with_title("Git-Client");

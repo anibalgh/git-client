@@ -147,9 +147,9 @@ impl ThemeIconService {
     /// Guarda la colección completa de iconos SVG con los colores del tema indicado en una carpeta
     pub fn export_themed_icons(&self, dest_dir: &std::path::Path, theme: &ThemeConfig) -> std::io::Result<()> {
         std::fs::create_dir_all(dest_dir)?;
-        for (id, _) in &self.templates {
+        for id in self.templates.keys() {
             let svg_content = self.render_svg(*id, theme);
-            let filename = format!("{:?}.svg", id).to_lowercase();
+            let filename = format!("{id:?}.svg").to_lowercase();
             let path = dest_dir.join(filename);
             std::fs::write(path, svg_content)?;
         }

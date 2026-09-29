@@ -31,4 +31,10 @@ pub enum DomainError {
 
     #[error("Error interno del sistema: {0}")]
     Internal(String),
+
+    #[error("Error de Red o Conectividad: {0}")]
+    NetworkError(String),
+
+    #[error("Error en proceso externo: {0}")]
+    ProcessError(String),
 }

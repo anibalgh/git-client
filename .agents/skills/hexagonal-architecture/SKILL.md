@@ -15,7 +15,7 @@ La Arquitectura Hexagonal (propuesta por Alistair Cockburn) aísla el núcleo de
 
 ## 1. El Concepto del Hexágono
 
-```
+```text
            [ Adaptadores Primarios / Driving ]
             (Interacción iniciada desde afuera)
              ┌─────────────┐       ┌─────────────┐
@@ -42,13 +42,14 @@ La Arquitectura Hexagonal (propuesta por Alistair Cockburn) aísla el núcleo de
              └─────────────┴───────────┴─────────────┘
           [ Adaptadores Secundarios / Driven / Infra ]
             (Invocados por el núcleo hacia afuera)
-```
+```text
 
 ---
 
 ## 2. Puertos de Entrada vs Puertos de Salida
 
 ### Puertos de Entrada (Inbound / Driving Ports)
+
 * **Definición:** Contratos que exponen lo que la aplicación puede hacer. Son el punto de entrada para los adaptadores primarios (GUI y CLI).
 * **Ubicación:** `crates/rmerge-application/src/ports/in/` y `crates/rmerge-application/src/use_cases/`.
 * **Ejemplos en el proyecto:**
@@ -59,6 +60,7 @@ La Arquitectura Hexagonal (propuesta por Alistair Cockburn) aísla el núcleo de
   * `TypographyUseCases`: Descubrimiento de fuentes del sistema y aplicación de estilos.
 
 ### Puertos de Salida (Outbound / Driven Ports)
+
 * **Definición:** Interfaces (`traits`) que definen lo que el núcleo necesita que el exterior haga por él. Permiten la **Inversión de Dependencias (DIP)**.
 * **Ubicación:** `crates/rmerge-application/src/ports/out/`.
 * **Ejemplos en el proyecto:**
@@ -73,6 +75,7 @@ La Arquitectura Hexagonal (propuesta por Alistair Cockburn) aísla el núcleo de
 ## 3. Implementación de Adaptadores
 
 ### Adaptadores Secundarios (Outbound Adapters)
+
 Residen en `crates/rmerge-infrastructure` e implementan los traits de `ports/out/`:
 
 1. **`GitStorageAdapter` (`crates/rmerge-infrastructure/src/git/storage_adapter.rs`):**
@@ -84,7 +87,9 @@ Residen en `crates/rmerge-infrastructure` e implementan los traits de `ports/out
    * Implementa `SettingsStoragePort` leyendo y escribiendo JSON en la ruta estándar de configuración del sistema (`~/.config/rmerge/` o `%APPDATA%`).
 
 ### Adaptadores Primarios (Driving Adapters)
+
 Residen en `crates/rmerge-gui` y `crates/rmerge-cli`:
+
 * Crean las instancias de los adaptadores de infraestructura (`GitStorageAdapter`, etc.).
 * Inyectan los adaptadores en los casos de uso (`Arc::new(...)`).
 * Invocan los casos de uso en respuesta a eventos del usuario (clics en botones, atajos de teclado, comandos de consola).
@@ -97,14 +102,17 @@ Cuando una funcionalidad requiera comunicarse con un sistema externo o un nuevo 
 
 1. **Declarar el Puerto de Salida:**
    * En `crates/rmerge-application/src/ports/out/<nombre>.rs`:
+
    ```rust
    #[async_trait::async_trait]
    pub trait RemoteProviderPort: Send + Sync {
        async fn check_connection(&self, url: &str) -> Result<bool, DomainError>;
    }
    ```
+
 2. **Implementar el Caso de Uso:**
    * En `crates/rmerge-application/src/use_cases/<nombre>.rs`:
+
    ```rust
    pub struct VerifyRemoteUseCase {
        provider: Arc<dyn RemoteProviderPort>,
@@ -116,8 +124,10 @@ Cuando una funcionalidad requiera comunicarse con un sistema externo o un nuevo 
        }
    }
    ```
+
 3. **Implementar el Adaptador de Infraestructura:**
    * En `crates/rmerge-infrastructure/src/<modulo>/adapter.rs`:
+
    ```rust
    pub struct NetworkRemoteAdapter;
    #[async_trait::async_trait]
@@ -128,8 +138,10 @@ Cuando una funcionalidad requiera comunicarse con un sistema externo o un nuevo 
        }
    }
    ```
+
 4. **Conectar en la Capa de Presentación:**
    * En `crates/rmerge-gui/src/main.rs`:
+
    ```rust
    let remote_adapter = Arc::new(NetworkRemoteAdapter);
    let verify_use_case = VerifyRemoteUseCase::new(remote_adapter);
@@ -147,5 +159,6 @@ struct MockGitStorage;
 impl GitStoragePort for MockGitStorage {
     // Retorna datos de prueba en memoria sin tocar git2
 }
-```
+```text
+
 Esto garantiza pruebas ultrarrápidas, deterministas y libres de efectos secundarios.

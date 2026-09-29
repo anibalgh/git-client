@@ -4,13 +4,12 @@
   "open_repo_dialog_title": "Seleccionar Repositorio Git Local",
   "refresh": "🔄 Refrescar",
   "home": "🏠 Inicio",
-  "show_graph": "📊 Grafo Rama",
-  "hide_graph": "📊 Ocultar Grafo",
+  "show_graph": "📊",
+  "hide_graph": "📊",
   "toggle_graph_tooltip": "Mostrar u ocultar el panel lateral del grafo de cambios",
   "theme": "Tema",
   "font_size": "Tamaño de Fuente",
   "language": "Idioma",
-
   "git_explorer": "Explorador Git",
   "branch_menu": "⚡ Menú de la Rama ▾",
   "menu_edit_gitignore": "📄 Editar / Ver .gitignore",
@@ -21,7 +20,6 @@
   "menu_create_pr": "🚀 Crear PR / MR en Navegador",
   "menu_refresh": "🔄 Refrescar Repositorio",
   "refresh_tooltip": "Refrescar estado de Git",
-
   "branches_header": "🌿 Ramas",
   "branch_list": "Lista de Ramas",
   "new_branch_tooltip": "Crear nueva rama...",
@@ -29,36 +27,29 @@
   "switch_branch_tooltip": "Cambiar a esta rama",
   "push_actions_tooltip": "Acciones de Push",
   "pull_actions_tooltip": "Acciones de Pull y Fetch",
-
   "tags_header": "🏷 Tags",
   "tag_list": "Lista de Tags",
   "new_tag_btn": "＋ Nuevo Tag...",
   "new_tag_tooltip": "Crear un nuevo tag...",
   "no_tags": "(Sin tags creados)",
   "delete_tag_tooltip": "Eliminar este tag",
-
   "conflicts_header": "▲ Conflictos",
   "resolve_conflict": "Resolver:",
-
   "staged_header": "✔ Preparados",
   "staged_view": "Ver archivos preparados",
   "unstage_all_tooltip": "Despreparar todo (quitar todos los archivos del stage)",
   "unstage_file_tooltip": "Despreparar este archivo (Unstage)",
   "no_staged_changes": "(Ningún cambio preparado)",
-
   "unstaged_header": "● Modificados",
   "unstaged_view": "Ver archivos modificados",
   "stage_all_tooltip": "Preparar todo (agregar todos los archivos modificados al stage)",
   "stage_file_tooltip": "Preparar este archivo (Stage)",
   "no_unstaged_changes": "(Sin modificaciones locales)",
-
   "untracked_header": "? Sin seguimiento",
   "stage_untracked_tooltip": "Preparar este archivo sin seguimiento (Stage)",
-
   "commit_message_label": "Mensaje de Commit:",
   "commit_message_hint": "Escriba la descripción del commit...",
   "commit_button": "✔ Realizar Commit (Ctrl+Enter)",
-
   "commit_history_title": "Historial de Commits",
   "commits_count": "commits",
   "graph_col": "Grafo",
@@ -66,7 +57,6 @@
   "message_col": "Mensaje",
   "author_col": "Autor",
   "date_col": "Fecha",
-
   "commit_detail_title": "Detalle del Commit",
   "commit_label": "Commit:",
   "tree_label": "Tree:",
@@ -80,7 +70,6 @@
   "files_changed_stat": "archivos modificados",
   "insertions_stat": "adiciones",
   "deletions_stat": "eliminaciones",
-
   "modified_files_label": "Archivos Modificados:",
   "select_file_placeholder": "Seleccionar archivo modificado...",
   "diff_status_added": "Agregado",
@@ -90,7 +79,6 @@
   "diff_status_conflicted": "Conflicto",
   "diff_status_modified": "Modificado",
   "diff_status_badge": "Estado:",
-
   "branch_graph_title": "📊 Grafo de Cambios",
   "branch_graph_close": "Cerrar panel lateral",
   "branch_graph_selector": "Rama:",
@@ -100,7 +88,6 @@
   "graph_legend_merge": "◈ Unión (Merge)",
   "graph_legend_fork": "Bifurcación",
   "graph_legend_head": "Cabecera de rama",
-
   "welcome_title": "Git-Client",
   "welcome_subtitle": "No se encontró ningún repositorio Git en el directorio actual",
   "recent_repos_title": "📂 Repositorios Recientemente Abiertos",
@@ -108,30 +95,24 @@
   "clone_repo": "📥 Clonar Repositorio...",
   "clear_history": "🗑 Borrar Historial",
   "no_recent_repos": "No hay repositorios recientes en el historial",
-
   "modal_create_branch_title": "🌿 Crear Nueva Rama",
   "modal_branch_name_label": "Nombre de la Rama:",
   "modal_branch_start_label": "Punto de Inicio:",
   "modal_create_btn": "Crear Rama",
   "modal_cancel_btn": "Cancelar",
-
   "modal_switch_branch_title": "🔀 Cambiar de Rama (Checkout)",
   "modal_switch_target_label": "Rama Destino:",
   "modal_switch_btn": "Cambiar Rama",
-
   "modal_merge_title": "🔀 Combinar Rama (Merge)",
   "modal_merge_target_label": "Rama a Combinar en la actual:",
   "modal_merge_btn": "Ejecutar Merge",
-
   "modal_tag_title": "🏷 Crear Nuevo Tag",
   "modal_tag_name_label": "Nombre del Tag:",
   "modal_tag_message_label": "Mensaje (opcional):",
   "modal_tag_commit_label": "Commit o Rama:",
   "modal_create_tag_btn": "Crear Tag",
-
   "modal_gitignore_title": "📄 Editor de .gitignore",
   "modal_save_gitignore_btn": "💾 Guardar .gitignore",
-
   "preferences_title": "Preferencias de Apariencia y Fuentes",
   "themes_title": "Tema Visual",
   "themes_subtitle": "Seleccione un tema de color (se guarda automáticamente):",
@@ -143,7 +124,6 @@
   "code_font_size_label": "Tamaño de Fuente Código",
   "enable_ligatures_label": "Habilitar Ligaduras Tipográficas (->, !=, ===)",
   "close_btn": "Cerrar",
-
   "about_title": "Acerca de Git-Client",
   "about_btn": "ℹ Acerca de",
   "about_version_label": "Versión",
@@ -155,12 +135,33 @@
   "about_platform_value": "Multiplataforma nativa (Linux, Windows, macOS)",
   "about_architecture_label": "Arquitectura",
   "about_architecture_value": "Arquitectura Limpia / Hexagonal en Rust",
-
   "server_unreachable_title": "Servidor Remoto No Alcanzable",
   "server_unreachable_timeout": "Tiempo de espera agotado al intentar conectar con el servidor '{host}:{port}' (2.5s).",
   "server_unreachable_refused": "No se pudo establecer conexión con el servidor '{host}:{port}': {detail}",
   "server_unreachable_hint": "El repositorio remoto no responde o se encuentra en una red privada/corporativa. Verifique su conexión a Internet o asegúrese de que su conexión VPN esté activa.",
   "server_unreachable_cmd_failed": "Operación afectada: {cmd}",
   "server_unreachable_action_btn": "Entendido",
-  "running_command": "Ejecutando"
+  "running_command": "Ejecutando",
+  "clone_modal_title": "⬇ Clonar Repositorio Remoto",
+  "clone_modal_desc": "Ingrese la URL del repositorio Git remoto y la carpeta de destino local:",
+  "clone_url_label": "URL del Repositorio:",
+  "clone_url_hint": "Ej: https://github.com/usuario/proyecto.git o git@github.com:usuario/proyecto.git",
+  "clone_dest_label": "Carpeta de Destino:",
+  "clone_browse_btn": "Examinar...",
+  "clone_auth_section": "🔐 Autenticación HTTPS (GitHub, GitLab, Bitbucket, etc.):",
+  "clone_saved_cred_found": "✔ Se encontraron credenciales guardadas para el host '{host}' (Usuario: {user})",
+  "clone_use_custom_cred": "Modificar o ingresar otras credenciales",
+  "clone_username_label": "Usuario o Email:",
+  "clone_secret_label": "Token o Contraseña (PAT):",
+  "clone_secret_hint": "Recomendado: Personal Access Token (PAT) con permisos de lectura/clonación",
+  "clone_save_cred_checkbox": "Guardar credenciales de forma segura en el almacén central cifrado",
+  "clone_start_btn": "✔ Iniciar Clonación",
+  "clone_cancel_btn": "Cancelar",
+  "clone_in_progress": "Clonando repositorio remoto... Por favor espere.",
+  "status_messages_title": "Mensajes de Estado",
+  "status_messages_clear_all": "🗑 Limpiar Todo",
+  "status_messages_empty": "No hay mensajes registrados.",
+  "status_messages_close": "Cerrar",
+  "status_messages_count": "Mensajes ({count})",
+  "status_messages_tooltip": "Doble-clic para ver el detalle de los mensajes"
 }
