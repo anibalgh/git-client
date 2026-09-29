@@ -1,0 +1,22 @@
+[package]
+name = "rmerge-gui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rmerge-gui"
+path = "src/main.rs"
+
+[dependencies]
+rmerge-domain = { path = "../rmerge-domain" }
+rmerge-application = { path = "../rmerge-application" }
+rmerge-infrastructure = { path = "../rmerge-infrastructure" }
+eframe = "0.31"
+image = { version = "0.25", default-features = false, features = ["png"] }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rfd = "0.15"
+webbrowser = "1.0"

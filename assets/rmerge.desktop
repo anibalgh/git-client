@@ -1,0 +1,17 @@
+[Desktop Entry]
+Name=Git-Client
+GenericName=Git Client
+Comment=Git-Client: Cliente Git de alto rendimiento desarrollado en Rust
+Exec=/home/anibalgh/Desarrollos/git-client/target/release/rmerge %F
+Icon=rmerge
+Terminal=false
+Type=Application
+Categories=Development;RevisionControl;Git;
+MimeType=inode/directory;
+Keywords=git;merge;diff;commit;client;rmerge;
+StartupWMClass=rmerge-gui
+Actions=OpenCurrent;
+
+[Desktop Action OpenCurrent]
+Name=Abrir Directorio Actual
+Exec=/home/anibalgh/Desarrollos/git-client/target/release/rmerge .

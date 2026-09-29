@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "crates/rmerge-domain",
+    "crates/rmerge-application",
+    "crates/rmerge-infrastructure",
+    "crates/rmerge-cli",
+    "crates/rmerge-gui",
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+authors = ["AnibalGH"]
+license = "MIT OR Apache-2.0"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
