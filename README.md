@@ -322,6 +322,8 @@ En ese momento, GitHub Actions iniciará automáticamente los jobs paralelos par
 
 ### 2. Cómo Generar el Detalle y Notas del Release (Changelog)
 
+> Para consultar el historial completo de cambios y artefactos publicados de cada versión, revisa el archivo [CHANGELOG.md](CHANGELOG.md).
+
 Para acompañar el Release con un detalle profesional de los cambios realizados entre versiones:
 
 #### Opción A: Mediante la Interfaz Web de GitHub (Automático)
@@ -387,6 +389,7 @@ git-client/
 ├── Cargo.toml                    # Configuración del espacio de trabajo (Workspace)
 ├── AGENT.md                      # Contexto integral y reglas de arquitectura para agentes de IA
 ├── README.md                     # Documentación general para usuarios y desarrolladores
+├── CHANGELOG.md                  # Registro histórico de versiones y notas de release
 ├── LICENSE                       # Licencia de código abierto MIT / Apache-2.0
 ├── assets/                       # Iconos y archivo .desktop
 ├── locales/                      # Archivos de idioma (es.json, en.json)
