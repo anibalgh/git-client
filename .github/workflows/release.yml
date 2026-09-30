@@ -273,7 +273,7 @@ jobs:
 
       - name: Assemble macOS .app Bundle and Tarball
         run: |
-          set -x
+          set -e
           VERSION="${{ steps.vars.outputs.VERSION }}"
           TARGET="${{ matrix.target }}"
           APP="Git-Client.app"
@@ -281,17 +281,21 @@ jobs:
           mkdir -p "${APP}/Contents/MacOS"
           mkdir -p "${APP}/Contents/Resources"
 
-          if [ -f "target/${TARGET}/release/rmerge-gui" ]; then
-            cp "target/${TARGET}/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
-            cp "target/${TARGET}/release/rmerge" "${APP}/Contents/MacOS/rmerge"
-          elif [ -f "target/release/rmerge-gui" ]; then
-            cp "target/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
-            cp "target/release/rmerge" "${APP}/Contents/MacOS/rmerge"
-          else
-            echo "::error::Could not find compiled binaries for ${TARGET}"
-            find target/ -type f -name "rmerge*" || true
-            exit 1
+          GUI_BIN=$(find target -type f -path "*/${TARGET}/*/rmerge-gui" | head -n 1)
+          CLI_BIN=$(find target -type f -path "*/${TARGET}/*/rmerge" ! -name "*rmerge-*" | head -n 1)
+
+          if [ -z "$GUI_BIN" ]; then
+            GUI_BIN=$(find target -type f -name "rmerge-gui" | head -n 1)
           fi
+          if [ -z "$CLI_BIN" ]; then
+            CLI_BIN=$(find target -type f -name "rmerge" ! -name "*rmerge-*" | head -n 1)
+          fi
+
+          echo "Found GUI_BIN: $GUI_BIN"
+          echo "Found CLI_BIN: $CLI_BIN"
+
+          cp "$GUI_BIN" "${APP}/Contents/MacOS/rmerge-gui"
+          cp "$CLI_BIN" "${APP}/Contents/MacOS/rmerge"
           chmod +x "${APP}/Contents/MacOS/rmerge-gui" "${APP}/Contents/MacOS/rmerge"
 
           # Generate Info.plist with current version
@@ -312,8 +316,8 @@ jobs:
           iconutil -c icns icon.iconset -o "${APP}/Contents/Resources/rmerge.icns" 2>/dev/null || true
           rm -rf icon.iconset
 
-          # Package as .tar.gz
-          tar -czvf "git-client-${VERSION}-${TARGET}.tar.gz" "${APP}"
+          # Package as .tar.gz (avoid GNU tar flag issues on BSD tar)
+          tar -czf "git-client-${VERSION}-${TARGET}.tar.gz" "${APP}"
 
       - name: Upload macOS Artifact to Release
         uses: softprops/action-gh-release@v2
