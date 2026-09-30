@@ -281,18 +281,18 @@ jobs:
           mkdir -p "${APP}/Contents/MacOS"
           mkdir -p "${APP}/Contents/Resources"
 
-          GUI_BIN=$(find target -type f -path "*/${TARGET}/*/rmerge-gui" | head -n 1)
-          CLI_BIN=$(find target -type f -path "*/${TARGET}/*/rmerge" ! -name "*rmerge-*" | head -n 1)
+          GUI_BIN="target/${TARGET}/release/rmerge-gui"
+          CLI_BIN="target/${TARGET}/release/rmerge"
 
-          if [ -z "$GUI_BIN" ]; then
-            GUI_BIN=$(find target -type f -name "rmerge-gui" | head -n 1)
+          if [ ! -f "$GUI_BIN" ]; then
+            GUI_BIN=$(find target -type f -name "rmerge-gui" | grep -v "incremental" | head -n 1)
           fi
-          if [ -z "$CLI_BIN" ]; then
-            CLI_BIN=$(find target -type f -name "rmerge" ! -name "*rmerge-*" | head -n 1)
+          if [ ! -f "$CLI_BIN" ]; then
+            CLI_BIN=$(find target -type f -name "rmerge" ! -name "*rmerge-*" | grep -v "incremental" | head -n 1)
           fi
 
-          echo "Found GUI_BIN: $GUI_BIN"
-          echo "Found CLI_BIN: $CLI_BIN"
+          echo "GUI_BIN: $GUI_BIN"
+          echo "CLI_BIN: $CLI_BIN"
 
           cp "$GUI_BIN" "${APP}/Contents/MacOS/rmerge-gui"
           cp "$CLI_BIN" "${APP}/Contents/MacOS/rmerge"
@@ -301,22 +301,12 @@ jobs:
           # Generate Info.plist with current version
           sed "s/__VERSION__/${VERSION}/g" packaging/macos/Info.plist > "${APP}/Contents/Info.plist"
 
-          # Copy existing icon sizes into icon.iconset and generate icns
-          mkdir -p icon.iconset
-          cp assets/icons/rmerge_16x16.png icon.iconset/icon_16x16.png
-          cp assets/icons/rmerge_32x32.png icon.iconset/icon_16x16@2x.png
-          cp assets/icons/rmerge_32x32.png icon.iconset/icon_32x32.png
-          cp assets/icons/rmerge_64x64.png icon.iconset/icon_32x32@2x.png
-          cp assets/icons/rmerge_128x128.png icon.iconset/icon_128x128.png
-          cp assets/icons/rmerge_256x256.png icon.iconset/icon_128x128@2x.png
-          cp assets/icons/rmerge_256x256.png icon.iconset/icon_256x256.png
-          cp assets/icons/rmerge_512x512.png icon.iconset/icon_256x256@2x.png
-          cp assets/icons/rmerge_512x512.png icon.iconset/icon_512x512.png
-          cp assets/icons/rmerge_512x512.png icon.iconset/icon_512x512@2x.png
-          iconutil -c icns icon.iconset -o "${APP}/Contents/Resources/rmerge.icns" 2>/dev/null || true
-          rm -rf icon.iconset
+          # Copy icon if exists
+          if [ -f "assets/icons/rmerge_512x512.png" ]; then
+            cp "assets/icons/rmerge_512x512.png" "${APP}/Contents/Resources/rmerge.png"
+          fi
 
-          # Package as .tar.gz (avoid GNU tar flag issues on BSD tar)
+          # Package as .tar.gz
           tar -czf "git-client-${VERSION}-${TARGET}.tar.gz" "${APP}"
 
       - name: Upload macOS Artifact to Release
