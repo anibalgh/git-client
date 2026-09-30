@@ -15,7 +15,7 @@ Este archivo contiene el contexto integral, las directrices arquitectónicas y l
 * **Stack Tecnológico:**
   * **Lenguaje:** Rust (Edición 2021, MSRV 1.80+)
   * **GUI:** [`egui`](https://github.com/emilk/egui) / [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe) (v0.31)
-  * **Motor Git:** [`git2`](https://docs.rs/git2) (bindings nativos de `libgit2`)
+  * **Motor Git:** [`git2`](https://docs.rs/git2) (con `vendored-openssl` y `vendored-libgit2` para garantizar compilación cruzada limpia y empaquetado hermético)
   * **Tipografías:** [`font-kit`](https://docs.rs/font-kit) (descubrimiento multiplataforma de fuentes del SO)
   * **CLI:** [`clap`](https://docs.rs/clap) (v4 con derive)
   * **Asincronía e IPC:** [`tokio`](https://tokio.rs/) (runtime multihilo con soporte de sockets locales / Named Pipes)
@@ -100,7 +100,7 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
 
 ### 3.2. Estructura del Encabezado Superior (Top Header)
 
-* El botón para alternar el panel del grafo lateral (`📊 Grafo Rama`) está ubicado **inmediatamente a la derecha del indicador de la rama activa**.
+* El botón para alternar el panel del grafo lateral (`📊`) muestra únicamente el icono representativo con tooltip dinámico (*"Ocultar Grafo"* / *"Mostrar Grafo"* según estado), ubicado **inmediatamente a la derecha del indicador de la rama activa** para optimizar el espacio horizontal.
 * Todas las acciones globales de navegación están concentradas en el **Menú Hamburguesa (`☰`)** en el extremo derecho:
   * 🏠 Inicio
   * 🔄 Refrescar
@@ -122,6 +122,12 @@ El proyecto está organizado como un espacio de trabajo (*Cargo Workspace*) divi
 
 * Antes de ejecutar operaciones remotas de Git (`push`, `pull`, `fetch`), el sistema debe realizar una comprobación previa no bloqueante de alcanzabilidad del servidor remoto (verificación de socket TCP hacia host y puerto con timeout corto).
 * Si el servidor no responde (ej. red privada o VPN desconectada), se debe desplegar el modal de advertencia (`server_unreachable_modal`) en el idioma activo en lugar de congelar la interfaz.
+
+### 3.5. Barra de Estado y Diálogo de Mensajes
+
+* La barra inferior muestra el último mensaje del sistema.
+* Si existe más de un mensaje en la cola, el texto se compacta como `Mensajes (#)` para evitar desbordes visuales.
+* Al hacer doble clic en la barra de estado, se abre el diálogo modal de mensajes (`messages_dialog_open`), permitiendo revisar cada notificación en orden y descartarlas/cerrarlas de manera individual (`✕`).
 
 ---
 

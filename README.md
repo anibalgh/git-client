@@ -127,7 +127,7 @@ Y se abrirá la vista gráfica de 3-Way Merge de Git-Client para resolverlo de f
 * **Inicio sin repositorio:** Al abrir la aplicación en un directorio que no sea un repositorio Git, se muestra la pantalla de bienvenida con la lista de **Repositorios Recientemente Abiertos**, con botones para abrir una carpeta local, clonar un repositorio remoto (`git clone`) o limpiar el historial.
 * **Barra Superior (Header):**
   * `📁 Ruta del Repositorio | 🌿 Rama Activa`: Indicador en tiempo real de la ruta y cabecera actual.
-  * `📊 Grafo Rama`: Botón ubicado inmediatamente a la derecha del nombre de la rama para alternar el panel del grafo lateral.
+  * `📊`: Botón con tooltip interactivo (*"Ocultar Grafo"* / *"Mostrar Grafo"* según estado), ubicado inmediatamente a la derecha del nombre de la rama para alternar el panel del grafo lateral manteniendo la barra despejada.
   * `☰ Menú Hamburguesa`: Menú unificado en el extremo derecho que agrupa:
     * `🏠 Inicio`: Regresa a la vista de bienvenida y repositorios recientes.
     * `🔄 Refrescar`: Recarga el estado completo de Git en memoria.
@@ -145,6 +145,10 @@ Y se abrirá la vista gráfica de 3-Way Merge de Git-Client para resolverlo de f
 * **Panel Central:**
   * **Historial de Commits:** Tabla con grafo lineal, hash con color acento, mensaje con tipografía y tamaño de la interfaz, autor y fecha.
   * **Detalle del Commit:** Metadatos completos (Hash con botón vertical `📋`, Tree ID, Autor, Fecha, Padres, Ramas), estadísticas de inserciones y eliminaciones con barra gráfica proporcional, selector (ComboBox) de archivos modificados y visor de diffs sintáctico con tipografía de código.
+* **Barra de Estado y Gestor Interactivo de Mensajes:**
+  * Visualización en tiempo real del último mensaje de estado, advertencia o error.
+  * Cuando hay múltiples mensajes en cola, se contrae a un indicador sintético `Mensajes (#)`.
+  * **Interacción por Doble Clic:** Al hacer doble clic sobre la barra de estado se despliega un diálogo modal enriquecido con el historial cronológico completo de mensajes. Cada mensaje cuenta con su propio botón de cierre individual (`✕`) para depurar notificaciones resueltas.
 * **Seguridad de Red (Pre-flight Check):** Comprobación no bloqueante de conectividad hacia el host remoto antes de comandos de red (`push`, `pull`, `fetch`), desplegando una alerta visual en caso de servidor no alcanzable (ej. requerimiento de VPN) evitando congelamientos.
 
 ---
