@@ -265,7 +265,11 @@ jobs:
         env:
           MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
-          cargo build --release --target ${{ matrix.target }} --workspace
+          cargo build --release --target ${{ matrix.target }} --workspace 2>&1 | tee build.log || {
+            echo "::error::--- BUILD FAILURE DETECTED ---"
+            tail -n 100 build.log
+            exit 1
+          }
 
       - name: Assemble macOS .app Bundle and Tarball
         run: |
