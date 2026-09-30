@@ -255,18 +255,13 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build binaries (Release)
+      - name: Build binaries and Assemble macOS Bundle
         env:
           MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
-          cargo build --release --target ${{ matrix.target }} --workspace 2>&1 | tee build.log || {
-            echo "::error::--- BUILD FAILURE DETECTED ---"
-            tail -n 100 build.log
-            exit 1
-          }
+          set -e
+          cargo build --release --target ${{ matrix.target }} --workspace
 
-      - name: Assemble macOS .app Bundle and Tarball
-        run: |
           VERSION="${{ steps.vars.outputs.VERSION }}"
           TARGET="${{ matrix.target }}"
           APP="Git-Client.app"
@@ -274,23 +269,22 @@ jobs:
           mkdir -p "${APP}/Contents/MacOS"
           mkdir -p "${APP}/Contents/Resources"
 
-          echo "=== Diagnostic directory check ==="
-          ls -la "target/${TARGET}/release" || ls -la target/release || true
-
           if [ -f "target/${TARGET}/release/rmerge-gui" ]; then
             cp "target/${TARGET}/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
             cp "target/${TARGET}/release/rmerge" "${APP}/Contents/MacOS/rmerge"
-          else
+          elif [ -f "target/release/rmerge-gui" ]; then
             cp "target/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
             cp "target/release/rmerge" "${APP}/Contents/MacOS/rmerge"
+          else
+            echo "Searching for compiled binaries:"
+            find target/ -type f -name "rmerge*"
+            exit 1
           fi
 
           chmod +x "${APP}/Contents/MacOS/rmerge-gui" "${APP}/Contents/MacOS/rmerge"
 
-          # Generate Info.plist with current version
           sed "s/__VERSION__/${VERSION}/g" packaging/macos/Info.plist > "${APP}/Contents/Info.plist"
 
-          # Package as .tar.gz
           tar -czf "git-client-${VERSION}-${TARGET}.tar.gz" "${APP}"
 
       - name: Upload macOS Artifact to Release
