@@ -228,15 +228,13 @@ jobs:
   # =========================================================================
   build-macos:
     name: macOS (.tar.gz and .app)
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: aarch64-apple-darwin
-            os: macos-latest
-          - target: x86_64-apple-darwin
-            os: macos-13
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -253,9 +251,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ matrix.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-${{ matrix.target }}-cargo-
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
 
       - name: Extract Tag Version
         id: vars
@@ -263,10 +261,12 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build binaries (Release)
-        env:
-          MACOSX_DEPLOYMENT_TARGET: "11.0"
+      - name: Configure SDK & Build binaries (Release)
         run: |
+          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+          export MACOSX_DEPLOYMENT_TARGET="11.0"
+          export CFLAGS_x86_64_apple_darwin="-arch x86_64"
+          export CXXFLAGS_x86_64_apple_darwin="-arch x86_64"
           cargo build --release --target ${{ matrix.target }} --workspace
 
       - name: Assemble macOS .app Bundle and Tarball
