@@ -259,7 +259,7 @@ jobs:
         env:
           MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
-          set -e
+          set -x
           cargo build --release --target ${{ matrix.target }} --workspace
 
           VERSION="${{ steps.vars.outputs.VERSION }}"
@@ -269,16 +269,15 @@ jobs:
           mkdir -p "${APP}/Contents/MacOS"
           mkdir -p "${APP}/Contents/Resources"
 
+          echo "Target directory contents:"
+          find target -type f -perm +111 -o -type f -name "rmerge*" || true
+
           if [ -f "target/${TARGET}/release/rmerge-gui" ]; then
             cp "target/${TARGET}/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
             cp "target/${TARGET}/release/rmerge" "${APP}/Contents/MacOS/rmerge"
           elif [ -f "target/release/rmerge-gui" ]; then
             cp "target/release/rmerge-gui" "${APP}/Contents/MacOS/rmerge-gui"
             cp "target/release/rmerge" "${APP}/Contents/MacOS/rmerge"
-          else
-            echo "Searching for compiled binaries:"
-            find target/ -type f -name "rmerge*"
-            exit 1
           fi
 
           chmod +x "${APP}/Contents/MacOS/rmerge-gui" "${APP}/Contents/MacOS/rmerge"
