@@ -8,7 +8,7 @@ license.workspace = true
 [dependencies]
 rmerge-domain = { path = "../rmerge-domain" }
 rmerge-application = { path = "../rmerge-application" }
-git2 = "0.20"
+git2 = { version = "0.20", features = ["vendored-openssl", "vendored-libgit2"] }
 font-kit = "0.14"
 dirs = "5.0"
 serde = { version = "1.0", features = ["derive"] }
