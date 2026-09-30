@@ -261,16 +261,11 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Configure SDK & Build binaries (Release)
+      - name: Build binaries (Release)
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
-          export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
-          export MACOSX_DEPLOYMENT_TARGET="11.0"
-          unset PKG_CONFIG_PATH
-          if [ "${{ matrix.target }}" = "x86_64-apple-darwin" ]; then
-            arch -x86_64 cargo build --release --target ${{ matrix.target }} --workspace
-          else
-            cargo build --release --target ${{ matrix.target }} --workspace
-          fi
+          cargo build --release --target ${{ matrix.target }} --workspace
 
       - name: Assemble macOS .app Bundle and Tarball
         run: |
