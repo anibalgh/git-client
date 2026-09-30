@@ -263,11 +263,14 @@ jobs:
 
       - name: Configure SDK & Build binaries (Release)
         run: |
-          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+          export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
           export MACOSX_DEPLOYMENT_TARGET="11.0"
-          export CFLAGS_x86_64_apple_darwin="-arch x86_64"
-          export CXXFLAGS_x86_64_apple_darwin="-arch x86_64"
-          cargo build --release --target ${{ matrix.target }} --workspace
+          unset PKG_CONFIG_PATH
+          if [ "${{ matrix.target }}" = "x86_64-apple-darwin" ]; then
+            arch -x86_64 cargo build --release --target ${{ matrix.target }} --workspace
+          else
+            cargo build --release --target ${{ matrix.target }} --workspace
+          fi
 
       - name: Assemble macOS .app Bundle and Tarball
         run: |
