@@ -297,17 +297,18 @@ jobs:
           # Generate Info.plist with current version
           sed "s/__VERSION__/${VERSION}/g" packaging/macos/Info.plist > "${APP}/Contents/Info.plist"
 
-          # Convert png to icns using sips and iconutil
+          # Copy existing icon sizes into icon.iconset and generate icns
           mkdir -p icon.iconset
-          sips -s format png -z 16 16     assets/icons/rmerge_512x512.png --out icon.iconset/icon_16x16.png
-          sips -s format png -z 32 32     assets/icons/rmerge_512x512.png --out icon.iconset/icon_16x16@2x.png
-          sips -s format png -z 32 32     assets/icons/rmerge_512x512.png --out icon.iconset/icon_32x32.png
-          sips -s format png -z 64 64     assets/icons/rmerge_512x512.png --out icon.iconset/icon_32x32@2x.png
-          sips -s format png -z 128 128   assets/icons/rmerge_512x512.png --out icon.iconset/icon_128x128.png
-          sips -s format png -z 256 256   assets/icons/rmerge_512x512.png --out icon.iconset/icon_128x128@2x.png
-          sips -s format png -z 256 256   assets/icons/rmerge_512x512.png --out icon.iconset/icon_256x256.png
-          sips -s format png -z 512 512   assets/icons/rmerge_512x512.png --out icon.iconset/icon_256x256@2x.png
-          sips -s format png -z 512 512   assets/icons/rmerge_512x512.png --out icon.iconset/icon_512x512.png
+          cp assets/icons/rmerge_16x16.png icon.iconset/icon_16x16.png
+          cp assets/icons/rmerge_32x32.png icon.iconset/icon_16x16@2x.png
+          cp assets/icons/rmerge_32x32.png icon.iconset/icon_32x32.png
+          cp assets/icons/rmerge_64x64.png icon.iconset/icon_32x32@2x.png
+          cp assets/icons/rmerge_128x128.png icon.iconset/icon_128x128.png
+          cp assets/icons/rmerge_256x256.png icon.iconset/icon_128x128@2x.png
+          cp assets/icons/rmerge_256x256.png icon.iconset/icon_256x256.png
+          cp assets/icons/rmerge_512x512.png icon.iconset/icon_256x256@2x.png
+          cp assets/icons/rmerge_512x512.png icon.iconset/icon_512x512.png
+          cp assets/icons/rmerge_512x512.png icon.iconset/icon_512x512@2x.png
           iconutil -c icns icon.iconset -o "${APP}/Contents/Resources/rmerge.icns" || true
           rm -rf icon.iconset
 
